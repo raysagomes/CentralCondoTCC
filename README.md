@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧩 Plataforma de Gestão de Equipes e Projetos
 
-## Getting Started
+Este projeto consiste na criação de uma plataforma completa para **gestão colaborativa de equipes e projetos**, com foco em **planejamento, execução e acompanhamento de tarefas em tempo real**.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🔧 Funcionalidades principais
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Gerenciamento de equipes**: criação de perfis, atribuição de funções, controle de acesso e comunicação interna.
+- **Criação de projetos e atividades**: estruturação de projetos com etapas, prazos, responsáveis e status de progresso.
+- **Sistema de pagamentos**: controle de valores por tarefa, registro de pagamentos realizados e pendentes.
+- **Avisos e notificações**: envio automático de alertas sobre prazos, atualizações e mensagens internas.
+- **Calendário personalizável**: visualização de tarefas, eventos e entregas com filtros por equipe, projeto ou usuário.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🎯 Objetivo
 
-## Learn More
+Oferecer uma solução intuitiva e eficiente para empresas, freelancers e equipes remotas que precisam organizar seus fluxos de trabalho, manter a comunicação clara e garantir o cumprimento de prazos e pagamentos.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🚀 Tecnologias Utilizadas
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### **Frontend**
 
-## Deploy on Vercel
+- [Next.js](https://nextjs.org/) (React)
+- [Tailwind CSS](https://tailwindcss.com/)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### **Backend**
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Node.js](https://nodejs.org/)
+- [Express](https://expressjs.com/) (API REST)
+- [Prisma](https://www.prisma.io/) (ORM)
+- [PostgreSQL](https://www.postgresql.org/) (Banco de dados)
+
+---
+
+## ⚙️ Instalação e Setup
+
+### 📌 Pré-requisitos
+
+- Node.js (>= 18.x)
+- PostgreSQL (>= 14.x)
+- npm ou yarn
+
+---
