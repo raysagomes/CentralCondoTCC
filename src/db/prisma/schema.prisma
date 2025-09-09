@@ -8,15 +8,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
 //////////////////////////
 // MODELS PRINCIPAIS
 //////////////////////////
@@ -35,6 +26,8 @@ model User {
   tasksCreated  Task[]   @relation("UserTasksCreated", fields: [], references: [])
   comments      Comment[]
   notifications Notification[]
+  ownedProjects Project[] @relation("UserOwnedProjects")
+
 }
 
 enum AccountType {
@@ -47,7 +40,6 @@ model Project {
   name        String
   description String?
   ownerId     String
-  owner       User      @relation(fields: [ownerId], references: [id])
   createdAt   DateTime  @default(now())
 
   // Relacionamentos
@@ -55,11 +47,13 @@ model Project {
   tasks       Task[]
   payments    Payment[]
   events      Event[]
-  
+  owner       User     @relation("UserOwnedProjects", fields: [ownerId], references: [id])
+
   // Configurações personalizáveis
   hasTasks       Boolean @default(true)
   hasPayments    Boolean @default(true)
   showMembers    Boolean @default(true)
+
 }
 
 model ProjectMember {
