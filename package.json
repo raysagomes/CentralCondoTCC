@@ -10,13 +10,27 @@
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",
+<<<<<<< HEAD
     "next": "15.5.2",
     "react": "19.1.0",
     "react-dom": "19.1.0"
+=======
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "next": "15.5.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-icons": "^5.5.0"
+>>>>>>> home-page
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+<<<<<<< HEAD
+=======
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.7",
+>>>>>>> home-page
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

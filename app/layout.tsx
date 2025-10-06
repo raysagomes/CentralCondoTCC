@@ -1,4 +1,6 @@
 import React from 'react';
+import './globals.css';
+import Header from '@/components/Layout/Header';
 
 export default function RootLayout({
   children,
@@ -7,7 +9,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body className="antialiased">
+        <Header />
+        <div className="pt-20">{children}</div>
+      </body>
     </html>
   );
 }

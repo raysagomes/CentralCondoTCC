@@ -1,0 +1,51 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyToken } from '../../../src/lib/auth';
+import { ProjectService } from '../../../src/services/implementations/ProjectService';
+import { ProjectRepository } from '../../../src/repositories/implementations/ProjectRepository';
+
+const projectRepository = new ProjectRepository();
+const projectService = new ProjectService(projectRepository);
+
+export async function GET(request: NextRequest) {
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return NextResponse.json({ error: 'Token não fornecido' }, { status: 401 });
+    }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+    }
+
+    const projects = await projectService.getProjectsByOwner(decoded.userId);
+
+    return NextResponse.json(projects);
+  } catch (error) {
+    console.error('Erro ao buscar projetos:', error);
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return NextResponse.json({ error: 'Token não fornecido' }, { status: 401 });
+    }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+    }
+
+    const { name, description } = await request.json();
+
+    const project = await projectService.createProject(name, description, decoded.userId);
+
+    return NextResponse.json(project, { status: 201 });
+  } catch (error) {
+    console.error('Erro ao criar projeto:', error);
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+  }
+}
