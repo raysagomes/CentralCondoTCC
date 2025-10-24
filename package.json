@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "dev": "npx prisma migrate dev && next dev",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint"
