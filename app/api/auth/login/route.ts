@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
         id: user.id,
         name: user.name,
         email: user.email,
-        accountType: user.accountType
+        accountType: user.accountType,
+        createdAt: user.createdAt
       }
     });
 

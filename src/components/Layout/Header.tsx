@@ -18,6 +18,7 @@ export default function Header() {
   const profileRef = useRef<HTMLDivElement>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [readNotifications, setReadNotifications] = useState<string[]>([]);
 
   const handleLogout = () => {
     logout();
@@ -33,23 +34,53 @@ export default function Header() {
       if (response.ok) {
         const data = await response.json();
         setNotifications(data);
-        setNotificationCount(data.filter((n: any) => !n.read).length);
+        const savedRead = localStorage.getItem('readNotifications');
+        const parsedRead = savedRead ? JSON.parse(savedRead) : [];
+        setReadNotifications(parsedRead);
+        const unreadCount = data.filter((n: any) => !parsedRead.includes(n.id.toString())).length;
+        setNotificationCount(unreadCount);
       }
     } catch (error) {
       console.error('Erro ao buscar notificações:', error);
-      // Mock data se API não existir
-      const mockNotifications = [
-        { id: 1, title: 'Nova tarefa atribuída', message: 'Você foi atribuído à tarefa "Revisar documentos"', read: false, createdAt: new Date().toISOString() },
-        { id: 2, title: 'Evento próximo', message: 'Reunião de equipe em 1 hora', read: false, createdAt: new Date().toISOString() },
-        { id: 3, title: 'Pagamento vencido', message: 'Boleto de condomínio vence hoje', read: true, createdAt: new Date().toISOString() }
-      ];
-      setNotifications(mockNotifications);
-      setNotificationCount(mockNotifications.filter(n => !n.read).length);
+      setNotifications([]);
+      setNotificationCount(0);
+    }
+  };
+
+  const markNotificationAsRead = async (notificationId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/notifications/${notificationId}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      const updatedRead = [...readNotifications, notificationId];
+      setReadNotifications(updatedRead);
+      localStorage.setItem('readNotifications', JSON.stringify(updatedRead));
+      
+      const unreadCount = notifications.filter(n => !updatedRead.includes(n.id.toString())).length;
+      setNotificationCount(unreadCount);
+    } catch (error) {
+      console.error('Erro ao marcar notificação como lida:', error);
     }
   };
 
   useEffect(() => {
     fetchNotifications();
+    const interval = setInterval(fetchNotifications, 5000);
+    
+    // Listen for notification updates from other components
+    const handleNotificationUpdate = () => {
+      fetchNotifications();
+    };
+    
+    window.addEventListener('notificationsUpdated', handleNotificationUpdate);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notificationsUpdated', handleNotificationUpdate);
+    };
   }, []);
 
   useEffect(() => {
@@ -106,8 +137,8 @@ export default function Header() {
             >
               <FaBell className={theme.textSecondary} />
               {notificationCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {notificationCount}
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  !
                 </span>
               )}
             </button>
@@ -119,11 +150,21 @@ export default function Header() {
                 </div>
                 <div className="max-h-96 overflow-y-auto">
                   {notifications.length > 0 ? (
-                    notifications.slice(0, 5).map((notification) => (
-                      <div key={notification.id} className={`p-4 border-b ${theme.border} last:border-b-0 ${theme.hover} transition-colors`}>
+                    notifications.slice(0, 5).map((notification) => {
+                      const isRead = notification.seen || readNotifications.includes(notification.id.toString());
+                      return (
+                      <div 
+                        key={notification.id} 
+                        onClick={() => {
+                          markNotificationAsRead(notification.id.toString());
+                          router.push('/notifications');
+                          setShowNotifications(false);
+                        }}
+                        className={`p-4 border-b ${theme.border} last:border-b-0 ${theme.hover} transition-colors cursor-pointer`}
+                      >
                         <div className="flex items-start space-x-3">
                           <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                            notification.read ? 'bg-gray-400' : 'bg-blue-500'
+                            isRead ? 'bg-gray-400' : 'bg-blue-500'
                           }`}></div>
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-medium ${theme.text}`}>{notification.title}</p>
@@ -134,7 +175,8 @@ export default function Header() {
                           </div>
                         </div>
                       </div>
-                    ))
+                    );
+                    })
                   ) : (
                     <div className="p-8 text-center">
                       <FaBell className={`mx-auto text-2xl ${theme.textSecondary} mb-2`} />
@@ -142,13 +184,17 @@ export default function Header() {
                     </div>
                   )}
                 </div>
-                {notifications.length > 5 && (
-                  <div className={`p-3 border-t ${theme.border} text-center`}>
-                    <button className={`text-sm text-blue-500 hover:text-blue-400 transition-colors`}>
-                      Ver todas as notificações
-                    </button>
-                  </div>
-                )}
+                <div className={`p-3 border-t ${theme.border} text-center`}>
+                  <button 
+                    onClick={() => {
+                      router.push('/notifications');
+                      setShowNotifications(false);
+                    }}
+                    className={`text-sm text-blue-500 hover:text-blue-400 transition-colors`}
+                  >
+                    Configurar notificações
+                  </button>
+                </div>
               </div>
             )}
           </div>

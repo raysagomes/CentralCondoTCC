@@ -45,18 +45,36 @@ export function useStats() {
       });
       const payments = paymentsResponse.ok ? await paymentsResponse.json() : [];
       
-      // Buscar dados do usuário
-      const userResponse = await fetch('/api/user', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const userData = userResponse.ok ? await userResponse.json() : {};
+      // Buscar dados do usuário do localStorage
+      const userData = localStorage.getItem('user');
+      let memberSince = 'N/A';
+      
+      if (userData) {
+        const user = JSON.parse(userData);
+        // Se não tiver createdAt no localStorage, buscar da API
+        if (!user.createdAt) {
+          try {
+            const userResponse = await fetch('/api/user', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (userResponse.ok) {
+              const fullUserData = await userResponse.json();
+              memberSince = fullUserData.createdAt ? new Date(fullUserData.createdAt).toLocaleDateString('pt-BR') : 'N/A';
+            }
+          } catch (error) {
+            console.log('Erro ao buscar data de criação:', error);
+          }
+        } else {
+          memberSince = new Date(user.createdAt).toLocaleDateString('pt-BR');
+        }
+      }
       
       setStats({
         projectsCount: projects.length,
         tasksCompleted,
         eventsCreated: events.length,
         paymentsCount: payments.length,
-        memberSince: userData.createdAt ? new Date(userData.createdAt).toLocaleDateString('pt-BR') : ''
+        memberSince
       });
     } catch (error) {
       console.error('Erro ao buscar estatísticas:', error);

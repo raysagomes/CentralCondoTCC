@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '../../../src/lib/auth';
-import { EventService } from '../../../src/services/implementations/EventService';
-import { EventRepository } from '../../../src/repositories/implementations/EventRepository';
-import { ProjectService } from '../../../src/services/implementations/ProjectService';
-import { ProjectRepository } from '../../../src/repositories/implementations/ProjectRepository';
-
-const eventRepository = new EventRepository();
-const projectRepository = new ProjectRepository();
-const projectService = new ProjectService(projectRepository);
-const eventService = new EventService(eventRepository, projectService);
+import { prisma } from '../../../src/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +14,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const events = await eventService.getEventsByOwner(decoded.userId);
+    const events = await prisma.event.findMany({
+      orderBy: { date: 'asc' }
+    });
 
     return NextResponse.json(events);
   } catch (error) {
@@ -43,9 +37,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const { title, description, date, time, projectId } = await request.json();
+    const { title, description, date, time } = await request.json();
 
-    const event = await eventService.createEvent(title, description, date, time, projectId || null, decoded.userId);
+    const event = await prisma.event.create({
+      data: {
+        title,
+        description,
+        date: new Date(date),
+        time
+      }
+    });
 
     return NextResponse.json(event, { status: 201 });
   } catch (error) {

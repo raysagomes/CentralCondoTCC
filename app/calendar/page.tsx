@@ -21,6 +21,8 @@ export default function Calendar() {
   const [newEvent, setNewEvent] = useState({ title: '', time: '', description: '' });
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const fetchEvents = async () => {
     try {
@@ -97,6 +99,8 @@ export default function Calendar() {
     if (selectedDate && newEvent.title) {
       try {
         const token = localStorage.getItem('token');
+        console.log('Criando evento:', { title: newEvent.title, date: selectedDate, time: newEvent.time });
+        
         const response = await fetch('/api/events', {
           method: 'POST',
           headers: {
@@ -111,13 +115,31 @@ export default function Calendar() {
           })
         });
 
+        console.log('Response status:', response.status);
+        
         if (response.ok) {
+          const result = await response.json();
+          console.log('Evento criado:', result);
           fetchEvents();
           setNewEvent({ title: '', time: '', description: '' });
           setShowEventModal(false);
+          alert('Evento criado com sucesso!');
+        } else {
+          const errorText = await response.text();
+          console.error('Erro na resposta:', response.status, errorText);
+          
+          if (response.status === 401) {
+            alert('Sessão expirada. Faça login novamente.');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            router.push('/auth');
+          } else {
+            alert('Erro ao criar evento');
+          }
         }
       } catch (error) {
         console.error('Erro ao criar evento:', error);
+        alert('Erro ao criar evento');
       }
     }
   };
@@ -285,9 +307,18 @@ export default function Calendar() {
           </div>
 
           <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6`}>
-            <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Próximos Eventos</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-lg font-semibold ${theme.text}`}>Próximos Eventos</h3>
+              {getAllEvents().length > itemsPerPage && (
+                <span className={`text-xs ${theme.textSecondary}`}>
+                  {currentPage} de {Math.ceil(getAllEvents().length / itemsPerPage)}
+                </span>
+              )}
+            </div>
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {getAllEvents().slice(0, 10).map((event: any) => (
+              {getAllEvents()
+                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                .map((event: any) => (
                 <div key={event.id} className={`${theme.secondaryBg} border ${theme.border} rounded-lg p-3 hover:border-blue-500/50 transition-all duration-200`}>
                   <div className="flex items-start justify-between mb-2">
                     <h4 className={`font-medium ${theme.text} text-sm`}>{event.title}</h4>
@@ -339,6 +370,34 @@ export default function Calendar() {
                 </div>
               )}
             </div>
+            
+            {getAllEvents().length > itemsPerPage && (
+              <div className="flex justify-center items-center space-x-4 mt-4">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-1 text-sm rounded transition-colors ${
+                    currentPage === 1 
+                      ? `${theme.textSecondary} cursor-not-allowed` 
+                      : `${theme.text} ${theme.secondaryBg} border ${theme.border} hover:${theme.hover}`
+                  }`}
+                >
+                  ←
+                </button>
+                
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(getAllEvents().length / itemsPerPage)))}
+                  disabled={currentPage === Math.ceil(getAllEvents().length / itemsPerPage)}
+                  className={`px-3 py-1 text-sm rounded transition-colors ${
+                    currentPage === Math.ceil(getAllEvents().length / itemsPerPage)
+                      ? `${theme.textSecondary} cursor-not-allowed`
+                      : `${theme.text} ${theme.secondaryBg} border ${theme.border} hover:${theme.hover}`
+                  }`}
+                >
+                  →
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

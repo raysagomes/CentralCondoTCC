@@ -14,14 +14,107 @@ export default function Dashboard() {
   const { isDark } = useTheme();
   const theme = getThemeClasses(isDark);
   const router = useRouter();
-  const { pendingTasks, notifications, loading: dashboardLoading } = useDashboard();
+  const { pendingTasks, loading: dashboardLoading } = useDashboard();
+  const [dashboardNotifications, setDashboardNotifications] = useState<any[]>([]);
   const { stats } = useStats();
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
+
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [hasNewAnnouncement, setHasNewAnnouncement] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [lastAnnouncementCount, setLastAnnouncementCount] = useState(0);
+  const [readAnnouncements, setReadAnnouncements] = useState<string[]>([]);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [newNotification, setNewNotification] = useState({ title: '', message: '', type: 'GENERAL', recipients: 'all' });
   const [members, setMembers] = useState<any[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [hasNewNotification, setHasNewNotification] = useState(false);
+  const [showNotificationToast, setShowNotificationToast] = useState(false);
+  const [lastNotificationCount, setLastNotificationCount] = useState(0);
+  const [readNotifications, setReadNotifications] = useState<string[]>([]);
+
+  const loadAnnouncements = () => {
+    const saved = localStorage.getItem('announcements');
+    const savedRead = localStorage.getItem('readAnnouncements');
+    
+    if (saved) {
+      const parsedAnnouncements = JSON.parse(saved);
+      const parsedRead = savedRead ? JSON.parse(savedRead) : [];
+      
+      // Verifica se há novos avisos não lidos
+      const hasUnread = parsedAnnouncements.some((ann: any) => !parsedRead.includes(ann.id.toString()));
+      
+      if (parsedAnnouncements.length > lastAnnouncementCount && lastAnnouncementCount > 0) {
+        setHasNewAnnouncement(hasUnread);
+        if (hasUnread) {
+          setShowToast(true);
+          setTimeout(() => setShowToast(false), 5000);
+        }
+      } else {
+        setHasNewAnnouncement(hasUnread);
+      }
+      
+      setAnnouncements(parsedAnnouncements);
+      setReadAnnouncements(parsedRead);
+      setLastAnnouncementCount(parsedAnnouncements.length);
+    } else {
+      setLastAnnouncementCount(0);
+    }
+  };
+
+  const markAnnouncementAsRead = (announcementId: string) => {
+    const updatedRead = [...readAnnouncements, announcementId];
+    setReadAnnouncements(updatedRead);
+    localStorage.setItem('readAnnouncements', JSON.stringify(updatedRead));
+    
+    // Verifica se ainda há avisos não lidos
+    const hasUnread = announcements.some((ann: any) => !updatedRead.includes(ann.id.toString()));
+    setHasNewAnnouncement(hasUnread);
+  };
+
+  const loadNotifications = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/notifications', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDashboardNotifications(data);
+        const savedRead = localStorage.getItem('readNotifications');
+        const parsedRead = savedRead ? JSON.parse(savedRead) : [];
+        
+        const hasUnread = data.some((notif: any) => !parsedRead.includes(notif.id.toString()));
+        
+        if (data.length > lastNotificationCount && lastNotificationCount > 0) {
+          setHasNewNotification(hasUnread);
+          if (hasUnread) {
+            setShowNotificationToast(true);
+            setTimeout(() => setShowNotificationToast(false), 5000);
+          }
+        } else {
+          setHasNewNotification(hasUnread);
+        }
+        
+        setReadNotifications(parsedRead);
+        setLastNotificationCount(data.length);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar notificações:', error);
+    }
+  };
+
+  const markNotificationAsRead = (notificationId: string) => {
+    const updatedRead = [...readNotifications, notificationId];
+    setReadNotifications(updatedRead);
+    localStorage.setItem('readNotifications', JSON.stringify(updatedRead));
+    
+    // Verifica se ainda há notificações não lidas
+    const hasUnread = dashboardNotifications.some((notif: any) => !updatedRead.includes(notif.id.toString()));
+    setHasNewNotification(hasUnread);
+  };
+
 
   const fetchEvents = async () => {
     try {
@@ -71,7 +164,8 @@ export default function Dashboard() {
         },
         body: JSON.stringify({
           ...newNotification,
-          selectedMembers: newNotification.recipients === 'specific' ? selectedMembers : []
+          selectedMembers: newNotification.recipients === 'specific' ? selectedMembers : 
+                          newNotification.recipients === 'self' ? [user?.id] : []
         })
       });
 
@@ -79,6 +173,8 @@ export default function Dashboard() {
         setShowNotificationModal(false);
         setNewNotification({ title: '', message: '', type: 'GENERAL', recipients: 'all' });
         setSelectedMembers([]);
+        loadNotifications();
+        window.dispatchEvent(new Event('notificationsUpdated'));
         alert('Notificação enviada com sucesso!');
       } else {
         alert('Erro ao enviar notificação');
@@ -89,12 +185,19 @@ export default function Dashboard() {
     }
   };
 
+
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push('/auth');
     } else if (isAuthenticated) {
       fetchEvents();
-      const interval = setInterval(fetchEvents, 5000);
+      loadAnnouncements();
+      loadNotifications();
+      const interval = setInterval(() => {
+        fetchEvents();
+        loadNotifications();
+      }, 30000);
       return () => clearInterval(interval);
     }
   }, [isAuthenticated, loading, router]);
@@ -106,15 +209,17 @@ export default function Dashboard() {
       }
     };
     
-    const handleStorageChange = () => {
-      if (isAuthenticated) {
-        fetchEvents();
+    const handleStorageChange = (e: StorageEvent) => {
+      if (isAuthenticated && e.key === 'readNotifications') {
+        loadNotifications();
       }
     };
     
     const handleVisibilityChange = () => {
       if (!document.hidden && isAuthenticated) {
         fetchEvents();
+        loadAnnouncements();
+        loadNotifications();
       }
     };
     
@@ -128,6 +233,18 @@ export default function Dashboard() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadNotifications();
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (showNotificationModal) {
+      fetchMembers();
+    }
+  }, [showNotificationModal]);
 
   if (loading || dashboardLoading || eventsLoading) {
     return (
@@ -162,12 +279,90 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Card de Avisos - Largura Total */}
+        <div className={`${theme.cardBg} border ${theme.border} p-8 rounded-xl hover:border-orange-500/50 transition-all duration-200 cursor-pointer mb-8`}
+             onClick={() => {
+               setHasNewAnnouncement(false);
+               router.push('/avisos');
+             }}>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className={`text-2xl font-bold ${theme.text} flex items-center`}>
+              <span className={`w-3 h-3 rounded-full mr-4 ${
+                hasNewAnnouncement ? 'bg-red-500 animate-pulse' : 'bg-orange-500'
+              }`}></span>
+              Mural de Avisos
+            </h3>
+            <span className="text-sm text-orange-500 hover:text-orange-600 font-medium">Ver mais →</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {announcements.slice(0, 3).map((announcement: any) => {
+              const isNew = new Date(announcement.createdAt) > new Date(Date.now() - 24 * 60 * 60 * 1000); // Novo se criado nas últimas 24h
+              const isUnread = !readAnnouncements.includes(announcement.id.toString());
+              return (
+              <div key={announcement.id} 
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     markAnnouncementAsRead(announcement.id.toString());
+                   }}
+                   className={`${theme.secondaryBg} border p-4 rounded-lg transition-all duration-200 cursor-pointer ${
+                isNew && isUnread
+                  ? 'border-red-500 shadow-red-500/50 shadow-lg animate-pulse bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20' 
+                  : `${theme.border} hover:border-orange-500/30`
+              }`}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <h4 className={`font-semibold ${theme.text} text-sm`}>{announcement.title}</h4>
+                    {isNew && isUnread && (
+                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-bounce font-bold">
+                        NOVO!
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    announcement.priority === 'HIGH' ? 'bg-red-100 text-red-800' :
+                    announcement.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {announcement.priority === 'HIGH' ? 'Alta' :
+                     announcement.priority === 'MEDIUM' ? 'Média' : 'Normal'}
+                  </span>
+                </div>
+                <p className={`text-xs ${theme.textSecondary} mb-3 line-clamp-3`}>{announcement.content}</p>
+                <div className="flex justify-between items-center text-xs">
+                  <span className={theme.textSecondary}>
+                    {new Date(announcement.createdAt).toLocaleDateString('pt-BR')}
+                  </span>
+                  <span className={theme.textSecondary}>
+                    Por: {announcement.author?.name || 'Sistema'}
+                  </span>
+                </div>
+              </div>
+            );
+            })}
+            {announcements.length === 0 && (
+              <div className={`col-span-full text-center py-12 ${theme.textSecondary}`}>
+                <div className="text-5xl mb-4">📢</div>
+                <p className="text-lg">Nenhum aviso no momento</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Cards Menores */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className={`${theme.cardBg} border ${theme.border} p-6 rounded-xl hover:border-blue-500/50 transition-all duration-200`}>
-            <h3 className={`text-lg font-semibold ${theme.text} mb-4 flex items-center`}>
-              <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
-              Próximos Eventos
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-lg font-semibold ${theme.text} flex items-center`}>
+                <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
+                Próximos Eventos
+              </h3>
+              <button
+                onClick={() => router.push('/calendar')}
+                className="text-blue-500 hover:text-blue-400 text-sm font-medium"
+              >
+                Ver mais →
+              </button>
+            </div>
             <div className="space-y-3">
               {recentEvents.slice(0, 3).map((event: any) => (
                 <div key={event.id} className={`flex items-center space-x-3 p-3 ${theme.secondaryBg} rounded-lg ${theme.hover} transition`}>
@@ -185,10 +380,18 @@ export default function Dashboard() {
           </div>
 
           <div className={`${theme.cardBg} border ${theme.border} p-6 rounded-xl hover:border-yellow-500/50 transition-all duration-200`}>
-            <h3 className={`text-lg font-semibold ${theme.text} mb-4 flex items-center`}>
-              <span className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></span>
-              Tarefas Pendentes
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-lg font-semibold ${theme.text} flex items-center`}>
+                <span className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></span>
+                Tarefas Pendentes
+              </h3>
+              <button
+                onClick={() => router.push('/projects')}
+                className="text-yellow-500 hover:text-yellow-400 text-sm font-medium"
+              >
+                Ver mais →
+              </button>
+            </div>
             <div className="space-y-3">
               {pendingTasks.slice(0, 3).map((task: any) => (
                 <div key={task.id} className={`flex items-center space-x-3 p-3 ${theme.secondaryBg} rounded-lg ${theme.hover} transition`}>
@@ -206,21 +409,62 @@ export default function Dashboard() {
           </div>
 
           <div className={`${theme.cardBg} border ${theme.border} p-6 rounded-xl hover:border-red-500/50 transition-all duration-200`}>
-            <h3 className={`text-lg font-semibold ${theme.text} mb-4 flex items-center`}>
-              <span className="w-2 h-2 bg-red-500 rounded-full mr-3"></span>
-              Notificações
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-lg font-semibold ${theme.text} flex items-center`}>
+                <span className={`w-2 h-2 rounded-full mr-3 ${
+                  hasNewNotification ? 'bg-red-500 animate-pulse' : 'bg-red-500'
+                }`}></span>
+                Notificações
+              </h3>
+              <button
+                onClick={() => router.push('/notifications')}
+                className="text-red-500 hover:text-red-400 text-sm font-medium"
+              >
+                Ver mais →
+              </button>
+            </div>
             <div className="space-y-3">
-              {notifications.slice(0, 3).map((notification: any) => (
-                <div key={notification.id} className={`flex items-start space-x-3 p-3 ${theme.secondaryBg} rounded-lg ${theme.hover} transition`}>
-                  <div className="w-2 h-2 bg-red-400 rounded-full mt-1 flex-shrink-0"></div>
+              {dashboardNotifications
+                .filter((notification: any) => !readNotifications.includes(notification.id.toString()))
+                .slice(0, 3)
+                .map((notification: any) => {
+                const isNew = new Date(notification.createdAt || Date.now()) > new Date(Date.now() - 24 * 60 * 60 * 1000);
+                const isUnread = !readNotifications.includes(notification.id.toString());
+                return (
+                <div key={notification.id} 
+                     onClick={() => {
+                       markNotificationAsRead(notification.id.toString());
+                       // Mark all notifications as read
+                       const allIds = dashboardNotifications.map(n => n.id.toString());
+                       const updatedRead = [...new Set([...readNotifications, ...allIds])];
+                       setReadNotifications(updatedRead);
+                       localStorage.setItem('readNotifications', JSON.stringify(updatedRead));
+                       setHasNewNotification(false);
+                       window.dispatchEvent(new Event('notificationsUpdated'));
+                     }}
+                     className={`flex items-start space-x-3 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
+                  isNew && isUnread
+                    ? 'border border-red-500 shadow-red-500/50 shadow-lg animate-pulse bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20' 
+                    : `${theme.secondaryBg} ${theme.hover}`
+                }`}>
+                  <div className={`w-2 h-2 rounded-full mt-1 flex-shrink-0 ${
+                    isNew && isUnread ? 'bg-red-500 animate-pulse' : 'bg-red-400'
+                  }`}></div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${theme.text}`}>{notification.title}</p>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <p className={`text-sm font-medium ${theme.text}`}>{notification.title}</p>
+                      {isNew && isUnread && (
+                        <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-bounce font-bold">
+                          NOVA!
+                        </span>
+                      )}
+                    </div>
                     <p className={`text-xs ${theme.textSecondary}`}>{notification.message}</p>
                   </div>
                 </div>
-              ))}
-              {notifications.length === 0 && (
+              );
+              })}
+              {dashboardNotifications.filter((notification: any) => !readNotifications.includes(notification.id.toString())).length === 0 && (
                 <p className={`text-sm ${theme.textSecondary} text-center py-4`}>Nenhuma notificação</p>
               )}
             </div>
@@ -238,9 +482,9 @@ export default function Dashboard() {
               <div className="text-4xl font-bold text-yellow-500 mb-2">{pendingTasks.length}</div>
               <div className={`text-sm ${theme.textSecondary}`}>Tarefas Pendentes</div>
             </div>
-            <div className={`text-center p-6 ${theme.secondaryBg} rounded-lg border ${theme.border} hover:border-red-500/50 transition-all duration-200`}>
-              <div className="text-4xl font-bold text-red-500 mb-2">{notifications.length}</div>
-              <div className={`text-sm ${theme.textSecondary}`}>Notificações</div>
+            <div className={`text-center p-6 ${theme.secondaryBg} rounded-lg border ${theme.border} hover:border-orange-500/50 transition-all duration-200`}>
+              <div className="text-4xl font-bold text-orange-500 mb-2">{announcements.length}</div>
+              <div className={`text-sm ${theme.textSecondary}`}>Avisos</div>
             </div>
             <div className={`text-center p-6 ${theme.secondaryBg} rounded-lg border ${theme.border} hover:border-green-500/50 transition-all duration-200`}>
               <div className="text-4xl font-bold text-green-500 mb-2">{stats.paymentsCount}</div>
@@ -249,10 +493,14 @@ export default function Dashboard() {
           </div>
         </div>
 
+
+
+        {/* Modal Enviar Notificação */}
         {showNotificationModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
-              <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Enviar Notificação</h3>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Enviar Notificação do Sistema</h3>
+              <p className={`text-sm ${theme.textSecondary} mb-4`}>Para avisos gerais, use o Mural. Notificações são para alertas importantes do sistema.</p>
               <form onSubmit={handleSendNotification} className="space-y-4">
                 <div>
                   <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Título</label>
@@ -282,9 +530,7 @@ export default function Dashboard() {
                     className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                   >
                     <option value="GENERAL">Geral</option>
-                    <option value="ALERT">Alerta</option>
-                    <option value="PAYMENT">Pagamento</option>
-                    <option value="EVENT">Evento</option>
+                    <option value="ALERT">Alerta Urgente</option>
                   </select>
                 </div>
                 <div>
@@ -293,12 +539,18 @@ export default function Dashboard() {
                     value={newNotification.recipients}
                     onChange={(e) => {
                       setNewNotification({...newNotification, recipients: e.target.value});
-                      if (e.target.value === 'all') setSelectedMembers([]);
-                      else if (e.target.value === 'specific') fetchMembers();
+                      if (e.target.value === 'all') {
+                        setSelectedMembers([]);
+                      } else if (e.target.value === 'specific') {
+                        fetchMembers();
+                      } else if (e.target.value === 'self') {
+                        setSelectedMembers([]);
+                      }
                     }}
                     className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                   >
                     <option value="all">Todos os membros</option>
+                    <option value="self">Apenas para mim</option>
                     <option value="specific">Membros específicos</option>
                   </select>
                 </div>
@@ -345,6 +597,29 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* Toast de Novo Aviso */}
+        {showToast && (
+          <div className="fixed top-4 right-4 z-50 bg-orange-500 text-white px-6 py-4 rounded-lg shadow-lg animate-bounce">
+            <div className="flex items-center space-x-2">
+              <span className="text-xl">!!!</span>
+              <span className="font-semibold">Novo aviso publicado!</span>
+              <span className="text-xl">!!!</span>
+            </div>
+          </div>
+        )}
+
+        {/* Toast de Nova Notificação */}
+        {showNotificationToast && (
+          <div className="fixed top-20 right-4 z-50 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg animate-bounce">
+            <div className="flex items-center space-x-2">
+              <span className="text-xl">🔔</span>
+              <span className="font-semibold">Nova notificação recebida!</span>
+              <span className="text-xl">🔔</span>
+            </div>
+          </div>
+        )}
+
         </div>
       </AppLayout>
     </div>

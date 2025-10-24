@@ -28,7 +28,14 @@ export default function Profile() {
     newPassword: '',
     confirmPassword: ''
   });
-  const { stats, loading: statsLoading } = useStats();
+
+  const { stats, loading: statsLoading, refetch } = useStats();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      refetch();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (user) {
@@ -96,6 +103,8 @@ export default function Profile() {
       console.error('Erro ao alterar senha:', error);
     }
   };
+
+
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -281,6 +290,8 @@ export default function Profile() {
               </div>
             </div>
 
+
+
             {/* Ações de Segurança */}
             <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6`}>
               <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Segurança</h3>
@@ -391,6 +402,8 @@ export default function Profile() {
             </div>
           </div>
         )}
+
+
         </div>
       </AppLayout>
     </div>

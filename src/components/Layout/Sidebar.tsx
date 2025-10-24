@@ -7,70 +7,81 @@ import {
   FaMoneyBillWave, 
   FaUsers, 
   FaUser, 
-  FaDoorOpen,
   FaPuzzlePiece 
 } from 'react-icons/fa';
 import { MdDashboard } from 'react-icons/md';
+import { BsFileText } from 'react-icons/bs';
+import { useState, useEffect } from 'react';
 
 const menuItems = [
-  { icon: MdDashboard, path: '/dashboard', label: 'Dashboard' },
-  { icon: FaProjectDiagram, path: '/projects', label: 'Projetos' },
-  { icon: FaCalendarAlt, path: '/calendar', label: 'Calendário' },
-  { icon: FaMoneyBillWave, path: '/payments', label: 'Pagamentos' },
-  { icon: FaUsers, path: '/members', label: 'Membros' },
-  { icon: FaUser, path: '/profile', label: 'Perfil' },
+  { icon: MdDashboard, path: '/dashboard', label: 'Dashboard', bgColor: 'bg-blue-500' },
+  { icon: BsFileText, path: '/avisos', label: 'Avisos', bgColor: 'bg-cyan-400' },
+  { icon: FaCalendarAlt, path: '/calendar', label: 'Calendário', bgColor: 'bg-yellow-300' },
+  { icon: FaUsers, path: '/members', label: 'Membros', bgColor: 'bg-purple-400' },
+  { icon: FaMoneyBillWave, path: '/payments', label: 'Pagamentos', bgColor: 'bg-pink-500' },
+  { icon: FaUser, path: '/profile', label: 'Perfil', bgColor: 'bg-gray-600' },
 ];
 
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const [hasNewAnnouncement, setHasNewAnnouncement] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    router.push('/auth');
-  };
+  useEffect(() => {
+    const checkNewAnnouncements = () => {
+      const lastCheck = localStorage.getItem('lastAnnouncementCheck');
+      const announcements = localStorage.getItem('announcements');
+      
+      if (announcements) {
+        const parsedAnnouncements = JSON.parse(announcements);
+        if (parsedAnnouncements.length > 0) {
+          const latestAnnouncement = parsedAnnouncements[0];
+          if (!lastCheck || new Date(latestAnnouncement.createdAt) > new Date(lastCheck)) {
+            setHasNewAnnouncement(true);
+          }
+        }
+      }
+    };
+
+    checkNewAnnouncements();
+    const interval = setInterval(checkNewAnnouncements, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <div className="fixed left-0 top-0 h-full w-20 bg-[#1a1d4f] border-r border-[#2a2d6f] shadow-2xl flex flex-col items-center py-6 z-50">
-      {/* Logo Principal - Sempre com fundo */}
-      <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center mb-8 shadow-lg hover:bg-blue-700 transition-colors cursor-pointer">
-        <FaPuzzlePiece className="text-white text-2xl" />
-      </div>
+    <div className="fixed left-6 top-1/2 -translate-y-1/2 flex flex-col items-center space-y-6 z-50">
+      {/* Menu Items - apenas ícones circulares */}
+      {menuItems.map((item) => {
+        const isActive = pathname === item.path;
+        
+        return (
+          <button
+            key={item.path}
+            onClick={() => {
+              if (item.path === '/avisos') {
+                setHasNewAnnouncement(false);
+                localStorage.setItem('lastAnnouncementCheck', new Date().toISOString());
+              }
+              router.push(item.path);
+            }}
+            className={`relative w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:scale-110 ${
+              isActive 
+                ? `${item.bgColor} text-white` 
+                : `${item.bgColor} text-white opacity-70 hover:opacity-100`
+            }`}
+            title={item.label}
+          >
+            <item.icon className="text-xl" />
+            {item.path === '/avisos' && hasNewAnnouncement && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse font-bold">
+                !
+              </span>
+            )}
+          </button>
+        );
+      })}
       
-      {/* Menu Items */}
-      <nav className="flex-1 flex flex-col space-y-3">
-        {menuItems.map((item) => {
-          const isActive = pathname === item.path;
-          
-          return (
-            <button
-              key={item.path}
-              onClick={() => router.push(item.path)}
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 group relative ${
-                isActive 
-                  ? 'bg-blue-600 text-white shadow-lg scale-110' 
-                  : 'bg-[#0f1136] text-gray-400 hover:bg-[#2a2d6f] hover:text-white hover:scale-105'
-              }`}
-              title={item.label}
-            >
-              <item.icon className="text-2xl" />
-              
-              {/* Tooltip */}
-              <div className="absolute left-full ml-4 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap shadow-xl pointer-events-none z-50">
-                {item.label}
-              </div>
-            </button>
-          );
-        })}
-      </nav>
 
-      {/* Avatar do Usuário no final */}
-      <div className="mt-auto">
-        <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-white text-sm font-bold cursor-pointer hover:bg-gray-600 transition-colors border-2 border-gray-600">
-          N
-        </div>
-      </div>
     </div>
   );
 }

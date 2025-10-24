@@ -22,6 +22,8 @@ export default function Projects() {
   const [editingTask, setEditingTask] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [members, setMembers] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const fetchMembers = async () => {
     try {
@@ -76,6 +78,24 @@ export default function Projects() {
       if (result.success) {
         setShowTaskModal(false);
         setNewTask({ title: '', description: '', assignedToId: '' });
+        const updatedProject = projects.find(p => p.id === selectedProject.id);
+        if (updatedProject) {
+          setSelectedProject({...updatedProject});
+        }
+      }
+    }
+  };
+
+  const handleQuickCreateTask = async () => {
+    if (selectedProject) {
+      const taskNumber = selectedProject.tasks.length + 1;
+      const result = await createTask(
+        selectedProject.id, 
+        `Nova Tarefa ${taskNumber}`, 
+        'Descrição da tarefa', 
+        undefined
+      );
+      if (result.success) {
         const updatedProject = projects.find(p => p.id === selectedProject.id);
         if (updatedProject) {
           setSelectedProject({...updatedProject});
@@ -165,9 +185,14 @@ export default function Projects() {
                 <div>
                   <h2 className={`text-2xl font-bold ${theme.text}`}>{selectedProject.name}</h2>
                   <p className={`${theme.textSecondary}`}>{selectedProject.description}</p>
+                  {selectedProject.tasks.length > itemsPerPage && (
+                    <span className={`text-xs ${theme.textSecondary} mt-1 block`}>
+                      Página {currentPage} de {Math.ceil(selectedProject.tasks.length / itemsPerPage)}
+                    </span>
+                  )}
                 </div>
                 <button 
-                  onClick={() => setShowTaskModal(true)}
+                  onClick={handleQuickCreateTask}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Nova Tarefa
@@ -175,7 +200,9 @@ export default function Projects() {
               </div>
               
               <div className="space-y-4">
-                {selectedProject.tasks.map((task: any) => (
+                {selectedProject.tasks
+                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                  .map((task: any) => (
                   <div key={task.id} className={`${theme.secondaryBg} border ${theme.border} rounded-lg p-4 hover:border-blue-500/50 transition-all duration-200`}>
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -215,6 +242,34 @@ export default function Projects() {
                   </div>
                 ))}
               </div>
+              
+              {selectedProject.tasks.length > itemsPerPage && (
+                <div className="flex justify-center items-center space-x-4 mt-6">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      currentPage === 1 
+                        ? `${theme.textSecondary} cursor-not-allowed` 
+                        : `${theme.text} ${theme.secondaryBg} border ${theme.border} hover:${theme.hover}`
+                    }`}
+                  >
+                    Anterior
+                  </button>
+                  
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(selectedProject.tasks.length / itemsPerPage)))}
+                    disabled={currentPage === Math.ceil(selectedProject.tasks.length / itemsPerPage)}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      currentPage === Math.ceil(selectedProject.tasks.length / itemsPerPage)
+                        ? `${theme.textSecondary} cursor-not-allowed`
+                        : `${theme.text} ${theme.secondaryBg} border ${theme.border} hover:${theme.hover}`
+                    }`}
+                  >
+                    Próxima
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ) : (
