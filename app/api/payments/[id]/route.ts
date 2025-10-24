@@ -18,8 +18,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const payment = await prisma.payment.findFirst({
       where: { 
-        id: paymentId,
-        project: { ownerId: decoded.userId }
+        id: paymentId
       }
     });
 

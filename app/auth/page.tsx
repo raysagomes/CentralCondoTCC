@@ -6,14 +6,58 @@ import { useRouter } from 'next/navigation';
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const { login, register } = useAuth();
   const router = useRouter();
 
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!isLogin) {
+      if (!formData.name.trim()) {
+        newErrors.name = 'Nome completo é obrigatório';
+      } else if (formData.name.trim().length < 2) {
+        newErrors.name = 'Nome deve ter pelo menos 2 caracteres';
+      } else if (!/^[a-zA-ZÀ-ſ\s]+$/.test(formData.name)) {
+        newErrors.name = 'Nome deve conter apenas letras e espaços';
+      }
+    }
+    
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email é obrigatório';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Email deve estar no formato válido: exemplo@dominio.com';
+    }
+    
+    if (!formData.password) {
+      newErrors.password = 'Senha é obrigatória';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Senha deve ter pelo menos 6 caracteres';
+    } else if (formData.password.length > 50) {
+      newErrors.password = 'Senha não pode ter mais de 50 caracteres';
+    }
+    
+    if (!isLogin) {
+      if (!formData.confirmPassword) {
+        newErrors.confirmPassword = 'Confirmação de senha é obrigatória';
+      } else if (formData.password !== formData.confirmPassword) {
+        newErrors.confirmPassword = 'As senhas digitadas não coincidem. Digite a mesma senha nos dois campos';
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    setErrors({});
     setLoading(true);
 
     try {
@@ -22,18 +66,14 @@ export default function Auth() {
         if (result.success) {
           router.push('/dashboard');
         } else {
-          setError(result.error || 'Erro no login');
+          setErrors({ general: result.error || 'Email ou senha inválidos' });
         }
       } else {
-        if (formData.password !== formData.confirmPassword) {
-          setError('Senhas não coincidem');
-          return;
-        }
         const result = await register(formData.name, formData.email, formData.password);
         if (result.success) {
           router.push('/dashboard');
         } else {
-          setError(result.error || 'Erro no registro');
+          setErrors({ general: result.error || 'Erro ao criar conta' });
         }
       }
     } finally {
@@ -54,9 +94,9 @@ export default function Auth() {
           </p>
         </div>
 
-        {error && (
+        {errors.general && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+            {errors.general}
           </div>
         )}
 
@@ -67,11 +107,19 @@ export default function Auth() {
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => {
+                  setFormData({...formData, name: e.target.value});
+                  if (errors.name) setErrors({...errors, name: ''});
+                }}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                  errors.name 
+                    ? 'border-red-500 focus:ring-red-500' 
+                    : 'border-gray-300 focus:ring-blue-500'
+                }`}
                 placeholder="Seu nome completo"
                 required
               />
+              {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
             </div>
           )}
           
@@ -80,11 +128,19 @@ export default function Auth() {
             <input
               type="email"
               value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => {
+                setFormData({...formData, email: e.target.value});
+                if (errors.email) setErrors({...errors, email: ''});
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                errors.email 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`}
               placeholder="seu@email.com"
               required
             />
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
 
           <div>
@@ -92,11 +148,19 @@ export default function Auth() {
             <input
               type="password"
               value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => {
+                setFormData({...formData, password: e.target.value});
+                if (errors.password) setErrors({...errors, password: ''});
+              }}
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                errors.password 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`}
               placeholder="••••••••"
               required
             />
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
           </div>
 
           {!isLogin && (
@@ -105,11 +169,19 @@ export default function Auth() {
               <input
                 type="password"
                 value={formData.confirmPassword}
-                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => {
+                  setFormData({...formData, confirmPassword: e.target.value});
+                  if (errors.confirmPassword) setErrors({...errors, confirmPassword: ''});
+                }}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                  errors.confirmPassword 
+                    ? 'border-red-500 focus:ring-red-500' 
+                    : 'border-gray-300 focus:ring-blue-500'
+                }`}
                 placeholder="••••••••"
                 required
               />
+              {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
             </div>
           )}
 
