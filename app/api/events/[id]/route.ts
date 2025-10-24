@@ -14,13 +14,13 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    await prisma.payment.delete({
+    await prisma.event.delete({
       where: { id: params.id }
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Erro ao deletar pagamento:', error);
+    console.error('Erro ao deletar evento:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }
@@ -37,17 +37,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const payment = await prisma.payment.update({
+    const { title, description, date, time } = await request.json();
+
+    const event = await prisma.event.update({
       where: { id: params.id },
-      data: { 
-        paid: true,
-        link: null
-      }
+      data: { title, description, date: new Date(date), time }
     });
 
-    return NextResponse.json(payment);
+    return NextResponse.json(event);
   } catch (error) {
-    console.error('Erro ao atualizar pagamento:', error);
+    console.error('Erro ao atualizar evento:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }

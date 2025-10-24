@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../src/hooks/useAuth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -10,6 +10,14 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const { login, register } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    if (mode === 'register') {
+      setIsLogin(false);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,20 +50,20 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+    <div className="min-h-screen bg-[#0f1136] flex items-center justify-center p-4">
+      <div className="bg-[#1a1d4f] border border-[#2a2d6f] p-8 rounded-xl w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-2xl">🧩</span>
+          <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-6">
+            <span className="text-white font-bold text-3xl">🧩</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">CentralCondo</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-white mb-2">CentralCondo</h1>
+          <p className="text-gray-400">
             {isLogin ? 'Entre na sua conta' : 'Crie sua conta'}
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-xl mb-4">
             {error}
           </div>
         )}
@@ -63,12 +71,12 @@ export default function Auth() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Nome</label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 bg-[#0f1136] border border-[#2a2d6f] rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-white placeholder-gray-500"
                 placeholder="Seu nome completo"
                 required
               />
@@ -76,24 +84,24 @@ export default function Auth() {
           )}
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 bg-[#0f1136] border border-[#2a2d6f] rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-white placeholder-gray-500"
               placeholder="seu@email.com"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Senha</label>
             <input
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 bg-[#0f1136] border border-[#2a2d6f] rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-white placeholder-gray-500"
               placeholder="••••••••"
               required
             />
@@ -101,12 +109,12 @@ export default function Auth() {
 
           {!isLogin && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar Senha</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Confirmar Senha</label>
               <input
                 type="password"
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 bg-[#0f1136] border border-[#2a2d6f] rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-white placeholder-gray-500"
                 placeholder="••••••••"
                 required
               />
@@ -116,7 +124,7 @@ export default function Auth() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl transition-colors font-semibold disabled:opacity-50 mt-6"
           >
             {loading ? 'Carregando...' : (isLogin ? 'Entrar' : 'Criar Conta')}
           </button>
@@ -125,7 +133,7 @@ export default function Auth() {
         <div className="mt-6 text-center">
           <button
             onClick={() => setIsLogin(!isLogin)}
-            className="text-blue-600 hover:text-blue-700 text-sm"
+            className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
           >
             {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Entre'}
           </button>

@@ -1,6 +1,6 @@
 import React from 'react';
 import './globals.css';
-import Header from '@/components/Layout/Header';
+import { ThemeProvider } from '../src/contexts/ThemeContext';
 
 export default function RootLayout({
   children,
@@ -10,8 +10,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className="antialiased">
-        <Header />
-        <div className="pt-20">{children}</div>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

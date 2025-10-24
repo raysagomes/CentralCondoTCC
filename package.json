@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "prisma:generate": "prisma generate --schema=src/db/prisma/schema.prisma",
+    "prisma:dbpush": "prisma db push --schema=src/db/prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",

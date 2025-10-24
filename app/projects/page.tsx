@@ -2,13 +2,16 @@
 import { useAuth } from '../../src/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import Sidebar from '../../src/components/Layout/Sidebar';
-import Header from '../../src/components/Layout/Header';
+import AppLayout from '../../src/components/Layout/AppLayout';
+import { useTheme } from '../../src/contexts/ThemeContext';
+import { getThemeClasses } from '../../src/utils/themeClasses';
 import { FaPlus } from 'react-icons/fa';
 import { useProjects } from '../../src/hooks/useProjects';
 
 export default function Projects() {
   const { isAuthenticated, loading: authLoading, user } = useAuth();
+  const { isDark } = useTheme();
+  const theme = getThemeClasses(isDark);
   const router = useRouter();
   const { projects, loading: projectsLoading, createProject, createTask, updateTask, deleteTask } = useProjects();
   const [selectedProject, setSelectedProject] = useState<any>(null);
@@ -46,7 +49,11 @@ export default function Projects() {
   }, [isAuthenticated, authLoading, router]);
 
   if (authLoading || projectsLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+    return (
+      <div className={`min-h-screen ${theme.bg} flex items-center justify-center`}>
+        <div className={`${theme.text} text-lg`}>Carregando...</div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
@@ -69,7 +76,6 @@ export default function Projects() {
       if (result.success) {
         setShowTaskModal(false);
         setNewTask({ title: '', description: '', assignedToId: '' });
-        // Atualizar o projeto selecionado com a nova tarefa
         const updatedProject = projects.find(p => p.id === selectedProject.id);
         if (updatedProject) {
           setSelectedProject({...updatedProject});
@@ -80,7 +86,6 @@ export default function Projects() {
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
     await updateTask(taskId, { status: newStatus });
-    // Forçar re-render do projeto selecionado
     const updatedProject = projects.find(p => p.id === selectedProject.id);
     if (updatedProject) {
       setSelectedProject({...updatedProject});
@@ -103,7 +108,6 @@ export default function Projects() {
       if (result.success) {
         setShowEditModal(false);
         setEditingTask(null);
-        // Forçar re-render do projeto selecionado
         const updatedProject = projects.find(p => p.id === selectedProject.id);
         if (updatedProject) {
           setSelectedProject({...updatedProject});
@@ -116,7 +120,6 @@ export default function Projects() {
     if (confirm('Tem certeza que deseja deletar esta tarefa?')) {
       const result = await deleteTask(taskId);
       if (result.success) {
-        // Forçar re-render do projeto selecionado
         const updatedProject = projects.find(p => p.id === selectedProject.id);
         if (updatedProject) {
           setSelectedProject({...updatedProject});
@@ -127,19 +130,10 @@ export default function Projects() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'COMPLETED': return 'bg-green-100 text-green-800';
-      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800';
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'COMPLETED': return 'Concluída';
-      case 'IN_PROGRESS': return 'Em Progresso';
-      case 'PENDING': return 'Pendente';
-      default: return 'Indefinido';
+      case 'COMPLETED': return 'bg-green-500/20 text-green-400';
+      case 'IN_PROGRESS': return 'bg-blue-500/20 text-blue-400';
+      case 'PENDING': return 'bg-yellow-500/20 text-yellow-400';
+      default: return 'bg-gray-500/20 text-gray-400';
     }
   };
 
@@ -150,28 +144,27 @@ export default function Projects() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <Header />
-      <div className="ml-20 pt-20 p-6">
+    <div className={`min-h-screen ${theme.bg}`}>
+      <AppLayout>
+        <div className="p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Projetos</h1>
-          <p className="text-gray-600 mt-2">Gerencie seus projetos e tarefas</p>
+          <h1 className={`text-3xl font-bold ${theme.text}`}>Projetos</h1>
+          <p className={`${theme.textSecondary} mt-2`}>Gerencie seus projetos e tarefas</p>
         </div>
 
         {selectedProject ? (
           <div>
             <button
               onClick={() => setSelectedProject(null)}
-              className="mb-4 text-blue-600 hover:text-blue-700 flex items-center"
+              className="mb-4 text-blue-400 hover:text-blue-300 flex items-center"
             >
               ← Voltar aos projetos
             </button>
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6`}>
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">{selectedProject.name}</h2>
-                  <p className="text-gray-600">{selectedProject.description}</p>
+                  <h2 className={`text-2xl font-bold ${theme.text}`}>{selectedProject.name}</h2>
+                  <p className={`${theme.textSecondary}`}>{selectedProject.description}</p>
                 </div>
                 <button 
                   onClick={() => setShowTaskModal(true)}
@@ -183,11 +176,11 @@ export default function Projects() {
               
               <div className="space-y-4">
                 {selectedProject.tasks.map((task: any) => (
-                  <div key={task.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div key={task.id} className={`${theme.secondaryBg} border ${theme.border} rounded-lg p-4 hover:border-blue-500/50 transition-all duration-200`}>
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">{task.title}</h3>
-                        <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
+                        <h3 className={`font-semibold ${theme.text}`}>{task.title}</h3>
+                        <div className={`flex items-center space-x-4 mt-2 text-sm ${theme.textSecondary}`}>
                           <span>Responsável: {task.assignedTo?.name || 'Não atribuído'}</span>
                           <span>Criado: {new Date(task.createdAt).toLocaleDateString('pt-BR')}</span>
                           <span>Por: {task.createdBy?.name}</span>
@@ -197,7 +190,7 @@ export default function Projects() {
                         <select
                           value={task.status}
                           onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                          className={`px-2 py-1 rounded-full text-xs font-medium border-0 ${getStatusColor(task.status)}`}
+                          className={`px-2 py-1 rounded-full text-xs font-medium border-0 ${getStatusColor(task.status)} bg-transparent`}
                         >
                           <option value="PENDING">Pendente</option>
                           <option value="IN_PROGRESS">Em Progresso</option>
@@ -206,13 +199,13 @@ export default function Projects() {
                         <div className="flex space-x-1">
                           <button
                             onClick={() => handleEditTask(task)}
-                            className="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded"
+                            className="text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded hover:bg-blue-500/20 transition-all duration-200"
                           >
                             Editar
                           </button>
                           <button
                             onClick={() => handleDeleteTask(task.id)}
-                            className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded"
+                            className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-red-500/20 transition-all duration-200"
                           >
                             Deletar
                           </button>
@@ -227,20 +220,20 @@ export default function Projects() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => (
-              <div key={project.id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"
+              <div key={project.id} className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 hover:border-purple-500/50 transition-all duration-200 cursor-pointer`}
                    onClick={() => setSelectedProject(project)}>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{project.name}</h3>
-                <p className="text-gray-600 mb-4">{project.description}</p>
+                <h3 className={`text-xl font-semibold ${theme.text} mb-2`}>{project.name}</h3>
+                <p className={`${theme.textSecondary} mb-4`}>{project.description}</p>
                 <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <div className="flex justify-between text-sm text-gray-400 mb-1">
                     <span>Progresso</span>
                     <span>{calculateProgress(project.tasks)}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-600 h-2 rounded-full" style={{width: `${calculateProgress(project.tasks)}%`}}></div>
+                  <div className={`w-full ${theme.secondaryBg} rounded-full h-2`}>
+                    <div className="bg-purple-500 h-2 rounded-full" style={{width: `${calculateProgress(project.tasks)}%`}}></div>
                   </div>
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className={`text-sm ${theme.textSecondary}`}>
                   {project.tasks.length} tarefas
                 </div>
               </div>
@@ -248,38 +241,39 @@ export default function Projects() {
             
             <div 
               onClick={() => setShowCreateModal(true)}
-              className="bg-white rounded-lg shadow p-6 border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors cursor-pointer flex flex-col items-center justify-center"
+              className={`${theme.cardBg} border-2 border-dashed ${theme.border} hover:border-blue-500/50 rounded-xl p-6 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center`}
             >
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                <FaPlus className="text-blue-600" />
+              <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
+                <FaPlus className="text-blue-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Novo Projeto</h3>
-              <p className="text-gray-600 text-center">Clique para criar um novo projeto</p>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-2`}>Novo Projeto</h3>
+              <p className={`${theme.textSecondary} text-center`}>Clique para criar um novo projeto</p>
             </div>
           </div>
         )}
 
+        {/* Modal Criar Projeto */}
         {showCreateModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-96">
-              <h3 className="text-lg font-semibold mb-4">Criar Novo Projeto</h3>
+            <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Criar Novo Projeto</h3>
               <form onSubmit={handleCreateProject} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Nome</label>
                   <input
                     type="text"
                     value={newProject.name}
                     onChange={(e) => setNewProject({...newProject, name: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Descrição</label>
                   <textarea
                     value={newProject.description}
                     onChange={(e) => setNewProject({...newProject, description: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                     rows={3}
                   />
                 </div>
@@ -287,7 +281,7 @@ export default function Projects() {
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                    className={`px-4 py-2 ${theme.textSecondary} hover:${theme.text} transition-colors`}
                   >
                     Cancelar
                   </button>
@@ -303,38 +297,39 @@ export default function Projects() {
           </div>
         )}
 
+        {/* Modal Nova Tarefa */}
         {showTaskModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-96">
-              <h3 className="text-lg font-semibold mb-4">Nova Tarefa</h3>
+            <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Nova Tarefa</h3>
               <form onSubmit={handleCreateTask} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Título</label>
                   <input
                     type="text"
                     value={newTask.title}
                     onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Descrição</label>
                   <textarea
                     value={newTask.description}
                     onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                     rows={3}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Atribuir a</label>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Responsável</label>
                   <select
                     value={newTask.assignedToId}
                     onChange={(e) => setNewTask({...newTask, assignedToId: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                   >
-                    <option value="">Não atribuído</option>
+                    <option value="">Selecionar responsável</option>
                     {members.map((member: any) => (
                       <option key={member.id} value={member.id}>{member.name}</option>
                     ))}
@@ -344,7 +339,7 @@ export default function Projects() {
                   <button
                     type="button"
                     onClick={() => setShowTaskModal(false)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                    className={`px-4 py-2 ${theme.textSecondary} hover:${theme.text} transition-colors`}
                   >
                     Cancelar
                   </button>
@@ -360,38 +355,39 @@ export default function Projects() {
           </div>
         )}
 
+        {/* Modal Editar Tarefa */}
         {showEditModal && editingTask && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-96">
-              <h3 className="text-lg font-semibold mb-4">Editar Tarefa</h3>
+            <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Editar Tarefa</h3>
               <form onSubmit={handleUpdateTask} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Título</label>
                   <input
                     type="text"
                     value={editingTask.title}
                     onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Descrição</label>
                   <textarea
-                    value={editingTask.description || ''}
+                    value={editingTask.description}
                     onChange={(e) => setEditingTask({...editingTask, description: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                     rows={3}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Atribuir a</label>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Responsável</label>
                   <select
                     value={editingTask.assignedToId || ''}
                     onChange={(e) => setEditingTask({...editingTask, assignedToId: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                   >
-                    <option value="">Não atribuído</option>
+                    <option value="">Selecionar responsável</option>
                     {members.map((member: any) => (
                       <option key={member.id} value={member.id}>{member.name}</option>
                     ))}
@@ -401,7 +397,7 @@ export default function Projects() {
                   <button
                     type="button"
                     onClick={() => setShowEditModal(false)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                    className={`px-4 py-2 ${theme.textSecondary} hover:${theme.text} transition-colors`}
                   >
                     Cancelar
                   </button>
@@ -416,7 +412,8 @@ export default function Projects() {
             </div>
           </div>
         )}
-      </div>
+        </div>
+      </AppLayout>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Sidebar } from "../UI/sidebar"
+import { Sidebar } from "../UI/sidebar.tsx"
 import { FiHome, FiUser, FiSettings } from "react-icons/fi";
 
 export default function SidebarCore() {
