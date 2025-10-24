@@ -3,12 +3,13 @@ import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { FaUser, FaBell, FaSignOutAlt } from 'react-icons/fa';
+import { useAllNotifications } from '../../hooks/useAllNotifications';
 
 export default function Header() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [notifications] = useState(3); // Mock notifications count
+  const { unreadCount } = useAllNotifications();
 
   const handleLogout = () => {
     logout();
@@ -49,11 +50,14 @@ export default function Header() {
 
           {/* Notifications */}
           <div className="relative">
-            <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors">
+            <button 
+              onClick={() => router.push('/notifications')}
+              className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+            >
               <FaBell className="text-gray-600" />
-              {notifications > 0 && (
+              {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {notifications}
+                  {unreadCount}
                 </span>
               )}
             </button>
