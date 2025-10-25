@@ -16,9 +16,8 @@ export async function GET(request: NextRequest) {
 
     const payments = await prisma.payment.findMany({
       where: {
-        project: { ownerId: decoded.userId }
+        ownerId: decoded.userId
       },
-      include: { project: true },
       orderBy: { dueDate: 'asc' }
     });
 
@@ -43,26 +42,13 @@ export async function POST(request: NextRequest) {
 
     const { title, amount, dueDate } = await request.json();
 
-    let project = await prisma.project.findFirst({
-      where: { ownerId: decoded.userId }
-    });
-
-    if (!project) {
-      project = await prisma.project.create({
-        data: {
-          name: 'Projeto Padrão',
-          description: 'Projeto criado automaticamente',
-          ownerId: decoded.userId
-        }
-      });
-    }
-
     const payment = await prisma.payment.create({
       data: {
         title,
         dueDate: new Date(dueDate),
         paid: false,
-        link: amount.toString()
+        link: amount.toString(),
+        ownerId: decoded.userId
       }
     });
 

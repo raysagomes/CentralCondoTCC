@@ -14,12 +14,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
+    }
+
+    // Determina o ID da empresa
+    const enterpriseId = user.accountType === 'ENTERPRISE' ? user.id : user.enterpriseId;
+    
+    if (!enterpriseId) {
+      return NextResponse.json({ members: [] });
+    }
+
     const members = await prisma.user.findMany({
+      where: {
+        OR: [
+          { id: enterpriseId },
+          { enterpriseId: enterpriseId }
+        ]
+      },
       select: {
         id: true,
         name: true,
         email: true,
         accountType: true,
+        enterpriseId: true,
         createdAt: true
       }
     });
@@ -42,28 +64,58 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
+    const creator = await prisma.user.findUnique({
+      where: { id: decoded.userId }
+    });
+
+    if (!creator || creator.accountType !== 'ENTERPRISE') {
+      return NextResponse.json({ error: 'Apenas ENTERPRISE pode criar membros' }, { status: 403 });
+    }
+
     const { name, email, accountType } = await request.json();
 
-    const hashedPassword = await hashPassword('temp123');
+    if (!['ADM', 'USER'].includes(accountType)) {
+      return NextResponse.json({ error: 'Tipo de conta inválido' }, { status: 400 });
+    }
+
+    // Verificar se o email já existe
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (existingUser) {
+      return NextResponse.json({ error: 'Email já está em uso' }, { status: 409 });
+    }
+
+    const temporaryPassword = 'temp123';
+    const hashedPassword = await hashPassword(temporaryPassword);
+    const hashedSecurityWord = await hashPassword('secret');
 
     const member = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        accountType: accountType || 'USER'
+        securityWord: hashedSecurityWord,
+        accountType,
+        enterpriseId: creator.id
       },
       select: {
         id: true,
         name: true,
         email: true,
         accountType: true,
+        enterpriseId: true,
         createdAt: true
       }
     });
 
-    return NextResponse.json(member);
+    return NextResponse.json({
+      ...member,
+      temporaryPassword
+    });
   } catch (error) {
+    console.error('Erro ao criar membro:', error);
     return NextResponse.json({ error: 'Erro ao criar membro' }, { status: 500 });
   }
 }

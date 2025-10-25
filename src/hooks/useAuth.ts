@@ -4,7 +4,8 @@ interface User {
   id: string;
   name: string;
   email: string;
-  accountType: string;
+  accountType: 'ENTERPRISE' | 'ADM' | 'USER';
+  enterpriseId?: string;
 }
 
 interface AuthState {

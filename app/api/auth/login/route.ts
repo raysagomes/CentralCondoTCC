@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
         name: user.name,
         email: user.email,
         accountType: user.accountType,
+        enterpriseId: user.enterpriseId,
         createdAt: user.createdAt
       }
     });

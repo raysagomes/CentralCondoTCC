@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/modules/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { FaPuzzlePiece } from 'react-icons/fa';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -9,7 +10,7 @@ export default function Auth() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [forgotPasswordData, setForgotPasswordData] = useState({ email: '', securityWord: '', newPassword: '', confirmNewPassword: '' });
+  const [forgotPasswordData, setForgotPasswordData] = useState({ email: '', securityWord: '', newPassword: '', confirmNewPassword: '', newSecurityWord: '' });
   const { login, register } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,7 +40,7 @@ export default function Auth() {
           setError('Senhas não coincidem');
           return;
         }
-        const result = await register(formData.name, formData.email, formData.password);
+        const result = await register(formData.name, formData.email, formData.password, formData.securityWord);
         if (result.success) {
           router.push('/dashboard');
         } else {
@@ -56,7 +57,7 @@ export default function Auth() {
       <div className="bg-[#1a1d4f] border border-[#2a2d6f] p-8 rounded-xl w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-6">
-            <span className="text-white font-bold text-3xl">🧩</span>
+            <FaPuzzlePiece className="text-white text-3xl" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">CentralCondo</h1>
           <p className="text-gray-400">
@@ -185,13 +186,14 @@ export default function Auth() {
                   body: JSON.stringify({
                     email: forgotPasswordData.email,
                     securityWord: forgotPasswordData.securityWord,
-                    newPassword: forgotPasswordData.newPassword
+                    newPassword: forgotPasswordData.newPassword,
+                    newSecurityWord: forgotPasswordData.newSecurityWord
                   })
                 });
                 if (response.ok) {
                   alert('Senha alterada com sucesso!');
                   setShowForgotPassword(false);
-                  setForgotPasswordData({ email: '', securityWord: '', newPassword: '', confirmNewPassword: '' });
+                  setForgotPasswordData({ email: '', securityWord: '', newPassword: '', confirmNewPassword: '', newSecurityWord: '' });
                 } else {
                   const data = await response.json();
                   setError(data.error || 'Erro ao alterar senha');
@@ -231,6 +233,13 @@ export default function Auth() {
                 onChange={(e) => setForgotPasswordData({...forgotPasswordData, confirmNewPassword: e.target.value})}
                 className="w-full px-4 py-3 bg-[#0f1136] border border-[#2a2d6f] rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-white placeholder-gray-500"
                 required
+              />
+              <input
+                type="text"
+                placeholder="Nova palavra de segurança (opcional)"
+                value={forgotPasswordData.newSecurityWord}
+                onChange={(e) => setForgotPasswordData({...forgotPasswordData, newSecurityWord: e.target.value})}
+                className="w-full px-4 py-3 bg-[#0f1136] border border-[#2a2d6f] rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-white placeholder-gray-500"
               />
               <div className="flex space-x-2">
                 <button

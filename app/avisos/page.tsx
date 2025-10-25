@@ -5,69 +5,82 @@ import { useRouter } from 'next/navigation';
 import AppLayout from '../../src/components/Layout/AppLayout';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { getThemeClasses } from '../../src/utils/themeClasses';
+import { HiSpeakerphone } from 'react-icons/hi';
+import { IoClose } from 'react-icons/io5';
+
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  priority: 'NORMAL' | 'MEDIUM' | 'HIGH';
+  createdAt: string;
+  author: { name: string };
+}
 
 export default function Avisos() {
   const { isAuthenticated, loading, user } = useAuth();
   const { isDark } = useTheme();
   const theme = getThemeClasses(isDark);
   const router = useRouter();
-  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [newAnnouncement, setNewAnnouncement] = useState({ title: '', content: '', priority: 'NORMAL', authorRole: 'Administração' });
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState<any>(null);
+  const [newAnnouncement, setNewAnnouncement] = useState({ title: '', content: '', priority: 'NORMAL' });
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [loadingAction, setLoadingAction] = useState(false);
   const itemsPerPage = 10;
 
-  const loadAnnouncements = () => {
-    const saved = localStorage.getItem('announcements');
-    if (saved) {
-      setAnnouncements(JSON.parse(saved));
-    } else {
-      const defaultAnnouncements = [
-        {
-          id: 1,
-          title: 'Manutenção do Elevador',
-          content: 'Informamos que o elevador social passará por manutenção preventiva no dia 15/01 das 8h às 17h.',
-          priority: 'HIGH',
-          createdAt: new Date().toISOString(),
-          author: { name: 'Administração' }
-        },
-        {
-          id: 2,
-          title: 'Reunião de Condomínio',
-          content: 'Convocamos todos os condôminos para a reunião ordinária que acontecerá no dia 20/01 às 19h no salão de festas.',
-          priority: 'MEDIUM',
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          author: { name: 'Síndico' }
-        }
-      ];
-      setAnnouncements(defaultAnnouncements);
-      localStorage.setItem('announcements', JSON.stringify(defaultAnnouncements));
+  const loadAnnouncements = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('/api/announcements', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAnnouncements(data.announcements);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar avisos:', error);
     }
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newAnnouncement.title.trim() || !newAnnouncement.content.trim()) {
       return;
     }
     
-    const announcement = {
-      id: Date.now(),
-      title: newAnnouncement.title.trim(),
-      content: newAnnouncement.content.trim(),
-      priority: newAnnouncement.priority,
-      createdAt: new Date().toISOString(),
-      author: { name: newAnnouncement.authorRole }
-    };
-    
-    const updatedAnnouncements = [announcement, ...announcements];
-    setAnnouncements(updatedAnnouncements);
-    localStorage.setItem('announcements', JSON.stringify(updatedAnnouncements));
-    
-    setShowModal(false);
-    setNewAnnouncement({ title: '', content: '', priority: 'NORMAL', authorRole: 'Administração' });
+    setLoadingAction(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/announcements', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: newAnnouncement.title.trim(),
+          content: newAnnouncement.content.trim(),
+          priority: newAnnouncement.priority
+        })
+      });
+      
+      if (response.ok) {
+        await loadAnnouncements();
+        setShowModal(false);
+        setNewAnnouncement({ title: '', content: '', priority: 'NORMAL' });
+      }
+    } catch (error) {
+      console.error('Erro ao criar aviso:', error);
+    } finally {
+      setLoadingAction(false);
+    }
   };
 
   useEffect(() => {
@@ -97,7 +110,7 @@ export default function Avisos() {
               <h1 className={`text-3xl font-bold ${theme.text}`}>Mural de Avisos</h1>
               <p className={`${theme.textSecondary} mt-2`}>Comunicados e informações importantes</p>
             </div>
-            {user?.accountType === 'COMPANY' && (
+            {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
               <button 
                 onClick={() => setShowModal(true)}
                 className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
@@ -139,7 +152,7 @@ export default function Avisos() {
 
           {announcements.length === 0 && (
             <div className={`text-center py-16 ${theme.textSecondary}`}>
-              <div className="text-6xl mb-4">📢</div>
+              <HiSpeakerphone className="text-6xl mb-4 mx-auto" />
               <h3 className="text-xl font-semibold mb-2">Nenhum aviso encontrado</h3>
               <p>Não há avisos publicados no momento.</p>
             </div>
@@ -215,19 +228,6 @@ export default function Avisos() {
                       <option value="HIGH">Alta</option>
                     </select>
                   </div>
-                  {user?.accountType === 'COMPANY' && (
-                    <div>
-                      <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Assinar como</label>
-                      <select
-                        value={newAnnouncement.authorRole}
-                        onChange={(e) => setNewAnnouncement({...newAnnouncement, authorRole: e.target.value})}
-                        className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-green-500 ${theme.text}`}
-                      >
-                        <option value="Administração">Administração</option>
-                        <option value="Síndico">Síndico</option>
-                      </select>
-                    </div>
-                  )}
                   <div className="flex justify-end space-x-2">
                     <button
                       type="button"
@@ -238,9 +238,10 @@ export default function Avisos() {
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      disabled={loadingAction}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                     >
-                      Criar
+                      {loadingAction ? 'Criando...' : 'Criar'}
                     </button>
                   </div>
                 </form>
@@ -257,7 +258,7 @@ export default function Avisos() {
                     onClick={() => setSelectedAnnouncement(null)}
                     className={`${theme.textSecondary} hover:${theme.text}`}
                   >
-                    ✕
+                    <IoClose className="text-xl" />
                   </button>
                 </div>
                 <p className={`${theme.text} mb-4`}>{selectedAnnouncement.content}</p>

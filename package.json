@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "prisma:generate": "prisma generate --schema=src/db/prisma/schema.prisma",
-    "prisma:dbpush": "prisma db push --schema=src/db/prisma/schema.prisma"
+    "prisma:dbpush": "prisma db push --schema=src/db/prisma/schema.prisma",
+    "db:reset": "npx prisma migrate reset --schema=src/db/prisma/schema.prisma && npx prisma migrate dev --schema=src/db/prisma/schema.prisma && npx prisma generate --schema=src/db/prisma/schema.prisma",
+    "migrate": "npx prisma migrate dev --schema=src/db/prisma/schema.prisma && npx prisma generate --schema=src/db/prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",

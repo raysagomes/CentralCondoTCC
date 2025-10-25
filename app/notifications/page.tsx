@@ -6,6 +6,7 @@ import AppLayout from '../../src/components/Layout/AppLayout';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { getThemeClasses } from '../../src/utils/themeClasses';
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { IoNotifications } from 'react-icons/io5';
 
 interface NotificationSettings {
   payments: {
@@ -193,7 +194,7 @@ export default function NotificationsSettings() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className="text-4xl mb-4">🔔</div>
+            <IoNotifications className="text-4xl mb-4 mx-auto" />
             <p className={`${theme.textSecondary}`}>Nenhuma notificação encontrada</p>
           </div>
         )}

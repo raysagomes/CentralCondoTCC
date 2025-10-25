@@ -21,6 +21,11 @@ export default function Projects() {
   const [newTask, setNewTask] = useState({ title: '', description: '', assignedToId: '' });
   const [editingTask, setEditingTask] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
+  const [selectedTaskForComments, setSelectedTaskForComments] = useState<any>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
   const [members, setMembers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -38,6 +43,54 @@ export default function Projects() {
     } catch (error) {
       console.error('Erro ao buscar membros:', error);
     }
+  };
+
+  const fetchComments = async (taskId: string) => {
+    setLoadingComments(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/tasks/${taskId}/comments`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setComments(data.comments);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar comentários:', error);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim() || !selectedTaskForComments) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/tasks/${selectedTaskForComments.id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ content: newComment.trim() })
+      });
+      
+      if (response.ok) {
+        setNewComment('');
+        fetchComments(selectedTaskForComments.id);
+      }
+    } catch (error) {
+      console.error('Erro ao adicionar comentário:', error);
+    }
+  };
+
+  const handleShowComments = (task: any) => {
+    setSelectedTaskForComments(task);
+    setShowCommentsModal(true);
+    fetchComments(task.id);
   };
 
   useEffect(() => {
@@ -191,12 +244,14 @@ export default function Projects() {
                     </span>
                   )}
                 </div>
-                <button 
-                  onClick={handleQuickCreateTask}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Nova Tarefa
-                </button>
+                {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
+                  <button 
+                    onClick={handleQuickCreateTask}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Nova Tarefa
+                  </button>
+                )}
               </div>
               
               <div className="space-y-4">
@@ -225,17 +280,27 @@ export default function Projects() {
                         </select>
                         <div className="flex space-x-1">
                           <button
-                            onClick={() => handleEditTask(task)}
-                            className="text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded hover:bg-blue-500/20 transition-all duration-200"
+                            onClick={() => handleShowComments(task)}
+                            className="text-green-400 hover:text-green-300 text-xs px-2 py-1 rounded hover:bg-green-500/20 transition-all duration-200"
                           >
-                            Editar
+                            Comentários
                           </button>
-                          <button
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-red-500/20 transition-all duration-200"
-                          >
-                            Deletar
-                          </button>
+                          {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
+                            <>
+                              <button
+                                onClick={() => handleEditTask(task)}
+                                className="text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded hover:bg-blue-500/20 transition-all duration-200"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-red-500/20 transition-all duration-200"
+                              >
+                                Deletar
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -294,16 +359,18 @@ export default function Projects() {
               </div>
             ))}
             
-            <div 
-              onClick={() => setShowCreateModal(true)}
-              className={`${theme.cardBg} border-2 border-dashed ${theme.border} hover:border-blue-500/50 rounded-xl p-6 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center`}
-            >
-              <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
-                <FaPlus className="text-blue-400" />
+            {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
+              <div 
+                onClick={() => setShowCreateModal(true)}
+                className={`${theme.cardBg} border-2 border-dashed ${theme.border} hover:border-blue-500/50 rounded-xl p-6 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center`}
+              >
+                <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
+                  <FaPlus className="text-blue-400" />
+                </div>
+                <h3 className={`text-lg font-semibold ${theme.text} mb-2`}>Novo Projeto</h3>
+                <p className={`${theme.textSecondary} text-center`}>Clique para criar um novo projeto</p>
               </div>
-              <h3 className={`text-lg font-semibold ${theme.text} mb-2`}>Novo Projeto</h3>
-              <p className={`${theme.textSecondary} text-center`}>Clique para criar um novo projeto</p>
-            </div>
+            )}
           </div>
         )}
 
@@ -463,6 +530,60 @@ export default function Projects() {
                     Salvar
                   </button>
                 </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Comentários */}
+        {showCommentsModal && selectedTaskForComments && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96 max-h-[80vh] overflow-hidden flex flex-col`}>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className={`text-lg font-semibold ${theme.text}`}>Comentários - {selectedTaskForComments.title}</h3>
+                <button 
+                  onClick={() => setShowCommentsModal(false)}
+                  className={`${theme.textSecondary} hover:${theme.text}`}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto mb-4 space-y-3">
+                {loadingComments ? (
+                  <div className={`text-center ${theme.textSecondary}`}>Carregando comentários...</div>
+                ) : comments.length === 0 ? (
+                  <div className={`text-center ${theme.textSecondary}`}>Nenhum comentário ainda</div>
+                ) : (
+                  comments.map((comment) => (
+                    <div key={comment.id} className={`${theme.secondaryBg} p-3 rounded-lg`}>
+                      <div className="flex justify-between items-start mb-2">
+                        <span className={`font-medium ${theme.text} text-sm`}>{comment.author.name}</span>
+                        <span className={`text-xs ${theme.textSecondary}`}>
+                          {new Date(comment.createdAt).toLocaleDateString('pt-BR')} {new Date(comment.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className={`${theme.text} text-sm`}>{comment.content}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+              
+              <form onSubmit={handleAddComment} className="flex space-x-2">
+                <input
+                  type="text"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Adicionar comentário..."
+                  className={`flex-1 px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text} text-sm`}
+                />
+                <button
+                  type="submit"
+                  disabled={!newComment.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 text-sm"
+                >
+                  Enviar
+                </button>
               </form>
             </div>
           </div>

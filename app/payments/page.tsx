@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { FaDollarSign } from 'react-icons/fa';
 
 // módulos
 import { useAuth } from '@/modules/auth';
@@ -340,7 +341,7 @@ export default function Payments() {
               {payments[activeTab].length === 0 && (
                 <div className="text-center py-12">
                   <div className={`w-16 h-16 ${theme.secondaryBg} rounded-full flex items-center justify-center mx-auto mb-4`}>
-                    <span className="text-2xl">💰</span>
+                    <FaDollarSign className="text-2xl" />
                   </div>
                   <h3 className={`text-lg font-semibold ${theme.text} mb-2`}>
                     Nenhum pagamento {activeTab === 'pending' ? 'pendente' : activeTab === 'paid' ? 'realizado' : 'atrasado'}

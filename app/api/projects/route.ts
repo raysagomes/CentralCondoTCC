@@ -38,6 +38,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
+    // Verificar permissões do usuário
+    const { prisma } = require('../../../src/lib/prisma');
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId }
+    });
+
+    if (!user || !['ENTERPRISE', 'ADM'].includes(user.accountType)) {
+      return NextResponse.json({ error: 'Apenas ENTERPRISE e ADM podem criar projetos' }, { status: 403 });
+    }
+
     const { name, description } = await request.json();
 
     const project = await projectService.createProject(name, description, decoded.userId);

@@ -16,22 +16,29 @@ model User {
   name         String
   email        String    @unique
   password     String
-  accountType  AccountType @default(USER) // USER ou COMPANY
+  securityWord String    
+  accountType  AccountType @default(ENTERPRISE) // ENTERPRISE, ADM ou USER
+  enterpriseId String?   // ID da empresa para usuários ADM e USER
   createdAt    DateTime  @default(now())
   
   // Relacionamentos
   projects     ProjectMember[]
   tasksAssigned Task[]   @relation("UserTasksAssigned", fields: [], references: [])
   tasksCreated  Task[]   @relation("UserTasksCreated", fields: [], references: [])
-  comments      Comment[]
+  comments     Comment[]
   notifications Notification[]
   ownedProjects Project[] @relation("UserOwnedProjects")
+  announcements Announcement[]
+  payments     Payment[] @relation("UserPayments")
+  enterprise   User?     @relation("EnterpriseUsers", fields: [enterpriseId], references: [id])
+  members      User[]    @relation("EnterpriseUsers")
 
 }
 
 enum AccountType {
   USER
-  COMPANY
+  ADM  
+  ENTERPRISE
 }
 
 model Project {
@@ -118,6 +125,8 @@ model Payment {
   link      String?
   paid      Boolean  @default(false)
   createdAt DateTime @default(now())
+  ownerId   String
+  owner     User     @relation("UserPayments", fields: [ownerId], references: [id])
   notifications Notification[] @relation("PaymentNotifications")
 }
 
@@ -164,4 +173,24 @@ enum NotificationType {
   EVENT
   ALERT
   GENERAL
+}
+
+//////////////////////////
+// AVISOS
+//////////////////////////
+
+model Announcement {
+  id        String            @id @default(uuid())
+  title     String
+  content   String
+  priority  AnnouncementPriority @default(NORMAL)
+  authorId  String
+  author    User              @relation(fields: [authorId], references: [id])
+  createdAt DateTime          @default(now())
+}
+
+enum AnnouncementPriority {
+  NORMAL
+  MEDIUM
+  HIGH
 }

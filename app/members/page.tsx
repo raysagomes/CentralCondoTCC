@@ -67,6 +67,44 @@ export default function Members() {
     setShowModal(true);
   };
 
+  const handleResetPassword = async (member: any) => {
+    const securityWord = prompt('Digite a palavra de segurança:');
+    if (!securityWord) return;
+    
+    const newPassword = prompt('Digite a nova senha:');
+    if (!newPassword) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/members/${member.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: member.name,
+          email: member.email,
+          accountType: member.accountType,
+          resetPassword: true,
+          securityWord,
+          newPassword
+        })
+      });
+      
+      if (response.ok) {
+        alert('Senha redefinida com sucesso!');
+        fetchMembers();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Erro ao redefinir senha');
+      }
+    } catch (error) {
+      console.error('Erro ao redefinir senha:', error);
+      alert('Erro ao redefinir senha');
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja remover este membro?')) {
       try {
@@ -150,11 +188,21 @@ export default function Members() {
   }
 
   const getRoleColor = (accountType: string) => {
-    return accountType === 'COMPANY' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400';
+    switch(accountType) {
+      case 'ENTERPRISE': return 'bg-purple-500/20 text-purple-400';
+      case 'ADM': return 'bg-blue-500/20 text-blue-400';
+      case 'USER': return 'bg-green-500/20 text-green-400';
+      default: return 'bg-gray-500/20 text-gray-400';
+    }
   };
 
   const getRoleName = (accountType: string) => {
-    return accountType === 'COMPANY' ? 'Empresa' : 'Usuário';
+    switch(accountType) {
+      case 'ENTERPRISE': return 'Enterprise';
+      case 'ADM': return 'Administrador';
+      case 'USER': return 'Usuário';
+      default: return 'Desconhecido';
+    }
   };
 
   const displayMembers = members.length > 0 ? members : mockMembers;
@@ -244,6 +292,12 @@ export default function Members() {
                           Editar
                         </button>
                         <button 
+                          onClick={() => handleResetPassword(member)}
+                          className="text-yellow-400 hover:text-yellow-300 px-2 py-1 rounded hover:bg-yellow-500/20 transition-all duration-200"
+                        >
+                          Reset Senha
+                        </button>
+                        <button 
                           onClick={() => handleDelete(member.id)}
                           className="text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-500/20 transition-all duration-200"
                         >
@@ -293,7 +347,7 @@ export default function Members() {
               <div className="ml-4">
                 <p className={`text-sm ${theme.textSecondary}`}>Administradores</p>
                 <p className={`text-2xl font-bold ${theme.text}`}>
-                  {displayMembers.filter(m => (m.accountType || m.role) === 'COMPANY').length}
+                  {displayMembers.filter(m => ['ENTERPRISE', 'ADM'].includes(m.accountType || m.role)).length}
                 </p>
               </div>
             </div>
@@ -335,7 +389,7 @@ export default function Members() {
                     className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                   >
                     <option value="USER">Usuário</option>
-                    <option value="COMPANY">Empresa</option>
+                    <option value="ADM">Administrador</option>
                   </select>
                 </div>
                 <div className="flex justify-end space-x-2">

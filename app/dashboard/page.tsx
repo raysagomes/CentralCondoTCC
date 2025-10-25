@@ -8,6 +8,8 @@ import { useTheme } from '../../src/contexts/ThemeContext';
 import { getThemeClasses } from '../../src/utils/themeClasses';
 import { useStats } from '../../src/hooks/useStats';
 import { useState } from 'react';
+import { HiSpeakerphone } from 'react-icons/hi';
+import { IoNotifications } from 'react-icons/io5';
 
 export default function Dashboard() {
   const { isAuthenticated, loading, user } = useAuth();
@@ -34,32 +36,29 @@ export default function Dashboard() {
   const [lastNotificationCount, setLastNotificationCount] = useState(0);
   const [readNotifications, setReadNotifications] = useState<string[]>([]);
 
-  const loadAnnouncements = () => {
-    const saved = localStorage.getItem('announcements');
-    const savedRead = localStorage.getItem('readAnnouncements');
-    
-    if (saved) {
-      const parsedAnnouncements = JSON.parse(saved);
-      const parsedRead = savedRead ? JSON.parse(savedRead) : [];
+  const loadAnnouncements = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('/api/announcements', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       
-      // Verifica se há novos avisos não lidos
-      const hasUnread = parsedAnnouncements.some((ann: any) => !parsedRead.includes(ann.id.toString()));
-      
-      if (parsedAnnouncements.length > lastAnnouncementCount && lastAnnouncementCount > 0) {
-        setHasNewAnnouncement(hasUnread);
-        if (hasUnread) {
-          setShowToast(true);
-          setTimeout(() => setShowToast(false), 5000);
-        }
-      } else {
+      if (response.ok) {
+        const data = await response.json();
+        const latestAnnouncements = data.announcements.slice(0, 3); // Apenas os 3 últimos
+        setAnnouncements(latestAnnouncements);
+        
+        const savedRead = localStorage.getItem('readAnnouncements');
+        const parsedRead = savedRead ? JSON.parse(savedRead) : [];
+        setReadAnnouncements(parsedRead);
+        
+        const hasUnread = latestAnnouncements.some((ann: any) => !parsedRead.includes(ann.id.toString()));
         setHasNewAnnouncement(hasUnread);
       }
-      
-      setAnnouncements(parsedAnnouncements);
-      setReadAnnouncements(parsedRead);
-      setLastAnnouncementCount(parsedAnnouncements.length);
-    } else {
-      setLastAnnouncementCount(0);
+    } catch (error) {
+      console.error('Erro ao carregar avisos:', error);
     }
   };
 
@@ -268,7 +267,7 @@ export default function Dashboard() {
               <h1 className={`text-3xl font-bold ${theme.text}`}>Dashboard</h1>
               <p className={`${theme.textSecondary} mt-2`}>Bem-vindo, {user?.name}!</p>
             </div>
-            {user?.accountType === 'COMPANY' && (
+            {user?.accountType === 'ENTERPRISE' && (
               <button 
                 onClick={() => setShowNotificationModal(true)}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -295,7 +294,7 @@ export default function Dashboard() {
             <span className="text-sm text-orange-500 hover:text-orange-600 font-medium">Ver mais →</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {announcements.slice(0, 3).map((announcement: any) => {
+            {announcements.map((announcement: any) => {
               const isNew = new Date(announcement.createdAt) > new Date(Date.now() - 24 * 60 * 60 * 1000); // Novo se criado nas últimas 24h
               const isUnread = !readAnnouncements.includes(announcement.id.toString());
               return (
@@ -341,7 +340,7 @@ export default function Dashboard() {
             })}
             {announcements.length === 0 && (
               <div className={`col-span-full text-center py-12 ${theme.textSecondary}`}>
-                <div className="text-5xl mb-4">📢</div>
+                <HiSpeakerphone className="text-5xl mb-4 mx-auto" />
                 <p className="text-lg">Nenhum aviso no momento</p>
               </div>
             )}
@@ -613,9 +612,9 @@ export default function Dashboard() {
         {showNotificationToast && (
           <div className="fixed top-20 right-4 z-50 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg animate-bounce">
             <div className="flex items-center space-x-2">
-              <span className="text-xl">🔔</span>
+              <IoNotifications className="text-xl" />
               <span className="font-semibold">Nova notificação recebida!</span>
-              <span className="text-xl">🔔</span>
+              <IoNotifications className="text-xl" />
             </div>
           </div>
         )}
