@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '../../../src/lib/auth';
+import { verifyToken, hashPassword } from '../../../src/lib/auth';
 import { prisma } from '../../../src/lib/prisma';
 
 export async function GET(request: NextRequest) {
@@ -44,11 +44,13 @@ export async function POST(request: NextRequest) {
 
     const { name, email, accountType } = await request.json();
 
+    const hashedPassword = await hashPassword('temp123');
+
     const member = await prisma.user.create({
       data: {
         name,
         email,
-        password: 'temp123',
+        password: hashedPassword,
         accountType: accountType || 'USER'
       },
       select: {

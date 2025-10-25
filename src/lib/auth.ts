@@ -12,7 +12,7 @@ export const comparePassword = async (password: string, hashedPassword: string):
 };
 
 export const generateToken = (userId: string): string => {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '1h' });
 };
 
 export const verifyToken = (token: string): { userId: string } | null => {
