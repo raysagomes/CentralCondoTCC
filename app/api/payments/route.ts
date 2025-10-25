@@ -61,7 +61,6 @@ export async function POST(request: NextRequest) {
       data: {
         title,
         dueDate: new Date(dueDate),
-        projectId: project.id,
         paid: false,
         link: amount.toString()
       }
