@@ -1,5 +1,178 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//////////////////////////
+// MODELS PRINCIPAIS
+//////////////////////////
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  password     String
+  accountType  AccountType @default(USER)
+  createdAt    DateTime  @default(now())
+  
+  // Relacionamentos
+  projects     ProjectMember[]
+  tasksAssigned Task[]   @relation("UserTasksAssigned")
+  tasksCreated  Task[]   @relation("UserTasksCreated")
+  comments      Comment[]
+  notifications Notification[]
+  ownedProjects Project[] @relation("UserOwnedProjects")
+}
+
+enum AccountType {
+  USER
+  COMPANY
+}
+
+model Project {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  ownerId     String
+  status      String    @default("active")
+  createdAt   DateTime  @default(now())
+
+  // Relacionamentos
+  members     ProjectMember[]
+  tasks       Task[]
+
+  events      Event[]
+  owner       User     @relation("UserOwnedProjects", fields: [ownerId], references: [id])
+
+  // Configurações personalizáveis
+  hasTasks       Boolean @default(true)
+  hasPayments    Boolean @default(true)
+  showMembers    Boolean @default(true)
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  role      MemberRole @default(MEMBER)
+  addedAt   DateTime @default(now())
+
+  @@unique([userId, projectId])
+}
+
+enum MemberRole {
+  MEMBER
+  ADMIN
+}
+
+//////////////////////////
+// TASKS E COMENTÁRIOS
+//////////////////////////
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  assignedToId String?
+  assignedTo  User?    @relation("UserTasksAssigned", fields: [assignedToId], references: [id])
+  createdById String
+  createdBy   User     @relation("UserTasksCreated", fields: [createdById], references: [id])
+  status      TaskStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  finishedAt  DateTime?
+  comments    Comment[]
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id])
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+//////////////////////////
+// PAGAMENTOS
+//////////////////////////
+
+model Payment {
+  id        String   @id @default(uuid())
+  title     String
+  amount    Float
+  dueDate   DateTime
+  barcode   String? 
+  link      String?
+  type      String   @default("other")
+  paid      Boolean  @default(false)
+  paidDate  DateTime?
+  createdAt DateTime @default(now())
+  notifications Notification[] @relation("PaymentNotifications")
+}
+
+//////////////////////////
+// EVENTOS
+//////////////////////////
+
+model Event {
+  id          String   @id @default(uuid())
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id])
+  title       String
+  description String?
+  date        DateTime
+  time        String?
+  type        String?
+  createdAt   DateTime @default(now())
+  notifications Notification[] @relation("EventNotifications")
+}
+
+//////////////////////////
+// NOTIFICAÇÕES GENÉRICAS
+//////////////////////////
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String?
+  user      User?            @relation(fields: [userId], references: [id])
+  type      NotificationType
+  title     String
+  message   String
+  seen      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  // Relacionamentos opcionais
+  paymentId String? 
+  payment   Payment?         @relation("PaymentNotifications", fields: [paymentId], references: [id])
+
+  eventId   String?
+  event     Event?           @relation("EventNotifications", fields: [eventId], references: [id])
+}
+
+enum NotificationType {
+  PAYMENT
+  EVENT
+  ALERT
+  GENERAL
+}generator client {
+  provider = "prisma-client-js"
 }
 
 datasource db {
