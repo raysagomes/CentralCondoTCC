@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { FaUser, FaBell, FaSignOutAlt } from 'react-icons/fa';
+import { FaUser, FaBell, FaSignOutAlt, FaMoon, FaSun } from 'react-icons/fa';
 import { useEffect, useRef } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getThemeClasses } from '../../utils/themeClasses';
@@ -10,7 +10,7 @@ import { getThemeClasses } from '../../utils/themeClasses';
 export default function Header() {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const { isDark } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
   const theme = getThemeClasses(isDark);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -101,6 +101,15 @@ export default function Header() {
     <header className={`fixed top-0 left-20 right-0 ${theme.cardBg} border-b ${theme.border} z-40`}>
       <div className="px-6 py-4">
         <div className="flex justify-end items-center space-x-4">
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className={`w-10 h-10 ${theme.secondaryBg} border ${theme.border} rounded-xl flex items-center justify-center ${theme.hover} transition-all duration-200`}
+            title={isDark ? 'Modo Claro' : 'Modo Escuro'}
+          >
+            {isDark ? <FaSun className={theme.textSecondary} /> : <FaMoon className={theme.textSecondary} />}
+          </button>
+
           {/* Profile Dropdown */}
           <div className="relative" ref={profileRef}>
             <button

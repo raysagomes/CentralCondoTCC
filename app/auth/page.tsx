@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/modules/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FaPuzzlePiece } from 'react-icons/fa';
+import { FaPuzzlePiece, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -11,6 +11,8 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordData, setForgotPasswordData] = useState({ email: '', securityWord: '', newPassword: '', confirmNewPassword: '', newSecurityWord: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const { login, register } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -100,14 +102,23 @@ export default function Auth() {
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Senha</label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-              className="w-full px-4 py-3 bg-[#0f1136] border border-[#2a2d6f] rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-white placeholder-gray-500"
-              placeholder="••••••••"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                className="w-full px-4 py-3 pr-12 bg-[#0f1136] border border-[#2a2d6f] rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-white placeholder-gray-500"
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
           </div>
 
           {!isLogin && (
@@ -218,14 +229,23 @@ export default function Auth() {
                 className="w-full px-4 py-3 bg-[#0f1136] border border-[#2a2d6f] rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-white placeholder-gray-500"
                 required
               />
-              <input
-                type="password"
-                placeholder="Nova senha"
-                value={forgotPasswordData.newPassword}
-                onChange={(e) => setForgotPasswordData({...forgotPasswordData, newPassword: e.target.value})}
-                className="w-full px-4 py-3 bg-[#0f1136] border border-[#2a2d6f] rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-white placeholder-gray-500"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  placeholder="Nova senha"
+                  value={forgotPasswordData.newPassword}
+                  onChange={(e) => setForgotPasswordData({...forgotPasswordData, newPassword: e.target.value})}
+                  className="w-full px-4 py-3 pr-12 bg-[#0f1136] border border-[#2a2d6f] rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-white placeholder-gray-500"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                >
+                  {showNewPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
               <input
                 type="password"
                 placeholder="Confirmar nova senha"

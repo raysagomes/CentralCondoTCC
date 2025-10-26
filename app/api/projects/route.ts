@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const projects = await projectService.getProjectsByOwner(decoded.userId);
+    const projects = await projectService.getAllUserProjects(decoded.userId);
 
     return NextResponse.json(projects);
   } catch (error) {

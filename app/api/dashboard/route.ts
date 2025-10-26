@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       eventService.getRecentEventsByOwner(decoded.userId),
       taskService.getPendingTasksByOwner(decoded.userId),
       prisma.notification.findMany({
-        where: { userId: decoded.userId, seen: false },
+        where: { userId: decoded.userId, status: 'UNREAD' },
         orderBy: { createdAt: 'desc' },
         take: 5
       })

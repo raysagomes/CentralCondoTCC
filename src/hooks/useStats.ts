@@ -62,7 +62,7 @@ export function useStats() {
               memberSince = fullUserData.createdAt ? new Date(fullUserData.createdAt).toLocaleDateString('pt-BR') : 'N/A';
             }
           } catch (error) {
-            console.log('Erro ao buscar data de criação:', error);
+            // Error fetching creation date
           }
         } else {
           memberSince = new Date(user.createdAt).toLocaleDateString('pt-BR');

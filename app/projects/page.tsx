@@ -27,8 +27,11 @@ export default function Projects() {
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [members, setMembers] = useState([]);
+  const [projectMembers, setProjectMembers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [showEditProjectModal, setShowEditProjectModal] = useState(false);
+  const [editingProject, setEditingProject] = useState({ name: '', description: '', memberIds: [] });
 
   const fetchMembers = async () => {
     try {
@@ -42,6 +45,21 @@ export default function Projects() {
       }
     } catch (error) {
       console.error('Erro ao buscar membros:', error);
+    }
+  };
+
+  const fetchProjectMembers = async (projectId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/projects/${projectId}/members`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProjectMembers(data);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar membros do projeto:', error);
     }
   };
 
@@ -149,10 +167,7 @@ export default function Projects() {
         undefined
       );
       if (result.success) {
-        const updatedProject = projects.find(p => p.id === selectedProject.id);
-        if (updatedProject) {
-          setSelectedProject({...updatedProject});
-        }
+        window.location.reload();
       }
     }
   };
@@ -166,7 +181,10 @@ export default function Projects() {
   };
 
   const handleEditTask = (task: any) => {
-    setEditingTask({ ...task });
+    setEditingTask({ 
+      ...task, 
+      assignedToId: task.assignedTo?.id || '' 
+    });
     setShowEditModal(true);
   };
 
@@ -176,7 +194,8 @@ export default function Projects() {
       const result = await updateTask(editingTask.id, {
         title: editingTask.title,
         description: editingTask.description,
-        assignedToId: editingTask.assignedToId || null
+        assignedToId: editingTask.assignedToId || null,
+        status: editingTask.status
       });
       if (result.success) {
         setShowEditModal(false);
@@ -198,6 +217,33 @@ export default function Projects() {
           setSelectedProject({...updatedProject});
         }
       }
+    }
+  };
+
+  const handleUpdateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProject) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/projects/${selectedProject.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(editingProject)
+      });
+
+      if (response.ok) {
+        const updatedProject = await response.json();
+        setSelectedProject(updatedProject);
+        setShowEditProjectModal(false);
+        // Atualizar a lista de projetos também
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar projeto:', error);
     }
   };
 
@@ -244,65 +290,65 @@ export default function Projects() {
                     </span>
                   )}
                 </div>
-                {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
-                  <button 
-                    onClick={handleQuickCreateTask}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Nova Tarefa
-                  </button>
-                )}
+                <div className="flex space-x-2">
+                  {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
+                    <>
+                      <button 
+                        onClick={() => {
+                          setEditingProject({
+                            name: selectedProject.name,
+                            description: selectedProject.description || '',
+                            memberIds: selectedProject.members?.map((m: any) => m.userId) || []
+                          });
+                          setShowEditProjectModal(true);
+                        }}
+                        className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                      >
+                        Editar Projeto
+                      </button>
+                      <button 
+                        onClick={handleQuickCreateTask}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Nova Tarefa
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
               
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {selectedProject.tasks
                   .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                   .map((task: any) => (
-                  <div key={task.id} className={`${theme.secondaryBg} border ${theme.border} rounded-lg p-4 hover:border-blue-500/50 transition-all duration-200`}>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className={`font-semibold ${theme.text}`}>{task.title}</h3>
-                        <div className={`flex items-center space-x-4 mt-2 text-sm ${theme.textSecondary}`}>
-                          <span>Responsável: {task.assignedTo?.name || 'Não atribuído'}</span>
-                          <span>Criado: {new Date(task.createdAt).toLocaleDateString('pt-BR')}</span>
-                          <span>Por: {task.createdBy?.name}</span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end space-y-2">
-                        <select
-                          value={task.status}
-                          onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                          className={`px-2 py-1 rounded-full text-xs font-medium border-0 ${getStatusColor(task.status)} bg-transparent`}
-                        >
-                          <option value="PENDING">Pendente</option>
-                          <option value="IN_PROGRESS">Em Progresso</option>
-                          <option value="COMPLETED">Concluída</option>
-                        </select>
+                  <div key={task.id} className={`${theme.secondaryBg} border ${theme.border} rounded-lg p-4 hover:border-blue-500/50 transition-all duration-200 cursor-pointer`}
+                       onClick={() => handleShowComments(task)}>
+                    <div className="flex justify-between items-start mb-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+                        {task.status === 'PENDING' ? 'Pendente' : task.status === 'IN_PROGRESS' ? 'Em Progresso' : 'Concluída'}
+                      </span>
+                      {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
                         <div className="flex space-x-1">
                           <button
-                            onClick={() => handleShowComments(task)}
-                            className="text-green-400 hover:text-green-300 text-xs px-2 py-1 rounded hover:bg-green-500/20 transition-all duration-200"
+                            onClick={(e) => { e.stopPropagation(); handleEditTask(task); }}
+                            className="text-blue-400 hover:text-blue-300 text-xs p-1 rounded hover:bg-blue-500/20 transition-all duration-200"
                           >
-                            Comentários
+                            ✏️
                           </button>
-                          {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
-                            <>
-                              <button
-                                onClick={() => handleEditTask(task)}
-                                className="text-blue-400 hover:text-blue-300 text-xs px-2 py-1 rounded hover:bg-blue-500/20 transition-all duration-200"
-                              >
-                                Editar
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTask(task.id)}
-                                className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-red-500/20 transition-all duration-200"
-                              >
-                                Deletar
-                              </button>
-                            </>
-                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
+                            className="text-red-400 hover:text-red-300 text-xs p-1 rounded hover:bg-red-500/20 transition-all duration-200"
+                          >
+                            🗑️
+                          </button>
                         </div>
-                      </div>
+                      )}
+                    </div>
+                    <h3 className={`font-semibold ${theme.text} mb-2 line-clamp-2`}>{task.title}</h3>
+                    <div className={`text-xs ${theme.textSecondary} space-y-1`}>
+                      <div>👤 {task.assignedTo?.name || 'Não atribuído'}</div>
+                      <div>📅 {new Date(task.createdAt).toLocaleDateString('pt-BR')}</div>
+                      <div>👨‍💼 {task.createdBy?.name}</div>
                     </div>
                   </div>
                 ))}
@@ -341,7 +387,10 @@ export default function Projects() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => (
               <div key={project.id} className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 hover:border-purple-500/50 transition-all duration-200 cursor-pointer`}
-                   onClick={() => setSelectedProject(project)}>
+                   onClick={() => {
+                     setSelectedProject(project);
+                     fetchProjectMembers(project.id);
+                   }}>
                 <h3 className={`text-xl font-semibold ${theme.text} mb-2`}>{project.name}</h3>
                 <p className={`${theme.textSecondary} mb-4`}>{project.description}</p>
                 <div className="mb-4">
@@ -452,7 +501,7 @@ export default function Projects() {
                     className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                   >
                     <option value="">Selecionar responsável</option>
-                    {members.map((member: any) => (
+                    {projectMembers.map((member: any) => (
                       <option key={member.id} value={member.id}>{member.name}</option>
                     ))}
                   </select>
@@ -496,10 +545,11 @@ export default function Projects() {
                 <div>
                   <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Descrição</label>
                   <textarea
-                    value={editingTask.description}
+                    value={editingTask.description || ''}
                     onChange={(e) => setEditingTask({...editingTask, description: e.target.value})}
                     className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                     rows={3}
+                    placeholder="Descrição da tarefa..."
                   />
                 </div>
                 <div>
@@ -510,9 +560,21 @@ export default function Projects() {
                     className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                   >
                     <option value="">Selecionar responsável</option>
-                    {members.map((member: any) => (
+                    {projectMembers.map((member: any) => (
                       <option key={member.id} value={member.id}>{member.name}</option>
                     ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Status</label>
+                  <select
+                    value={editingTask.status || 'PENDING'}
+                    onChange={(e) => setEditingTask({...editingTask, status: e.target.value})}
+                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
+                  >
+                    <option value="PENDING">Pendente</option>
+                    <option value="IN_PROGRESS">Em Progresso</option>
+                    <option value="COMPLETED">Concluída</option>
                   </select>
                 </div>
                 <div className="flex justify-end space-x-2">
@@ -537,53 +599,202 @@ export default function Projects() {
 
         {/* Modal Comentários */}
         {showCommentsModal && selectedTaskForComments && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96 max-h-[80vh] overflow-hidden flex flex-col`}>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className={`text-lg font-semibold ${theme.text}`}>Comentários - {selectedTaskForComments.title}</h3>
-                <button 
-                  onClick={() => setShowCommentsModal(false)}
-                  className={`${theme.textSecondary} hover:${theme.text}`}
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto mb-4 space-y-3">
-                {loadingComments ? (
-                  <div className={`text-center ${theme.textSecondary}`}>Carregando comentários...</div>
-                ) : comments.length === 0 ? (
-                  <div className={`text-center ${theme.textSecondary}`}>Nenhum comentário ainda</div>
-                ) : (
-                  comments.map((comment) => (
-                    <div key={comment.id} className={`${theme.secondaryBg} p-3 rounded-lg`}>
-                      <div className="flex justify-between items-start mb-2">
-                        <span className={`font-medium ${theme.text} text-sm`}>{comment.author.name}</span>
-                        <span className={`text-xs ${theme.textSecondary}`}>
-                          {new Date(comment.createdAt).toLocaleDateString('pt-BR')} {new Date(comment.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p className={`${theme.text} text-sm`}>{comment.content}</p>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className={`${theme.cardBg} border ${theme.border} rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col`}>
+              {/* Cabeçalho da Tarefa */}
+              <div className={`p-6 border-b ${theme.border}`}>
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <h2 className={`text-xl font-bold ${theme.text} mb-2`}>{selectedTaskForComments.title}</h2>
+                    <div className="flex items-center space-x-4 text-sm">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedTaskForComments.status)}`}>
+                        {selectedTaskForComments.status === 'PENDING' ? 'Pendente' : selectedTaskForComments.status === 'IN_PROGRESS' ? 'Em Progresso' : 'Concluída'}
+                      </span>
+                      <span className={theme.textSecondary}>👤 {selectedTaskForComments.assignedTo?.name || 'Não atribuído'}</span>
+                      <span className={theme.textSecondary}>📅 {new Date(selectedTaskForComments.createdAt).toLocaleDateString('pt-BR')}</span>
                     </div>
-                  ))
+                  </div>
+                  <button 
+                    onClick={() => setShowCommentsModal(false)}
+                    className={`${theme.textSecondary} hover:${theme.text} p-2 rounded-lg hover:bg-gray-500/20`}
+                  >
+                    ✕
+                  </button>
+                </div>
+                {selectedTaskForComments.description && (
+                  <div className={`${theme.secondaryBg} p-3 rounded-lg`}>
+                    <h4 className={`font-medium ${theme.text} mb-2`}>Descrição:</h4>
+                    <p className={`${theme.textSecondary} text-sm`}>{selectedTaskForComments.description}</p>
+                  </div>
                 )}
               </div>
               
-              <form onSubmit={handleAddComment} className="flex space-x-2">
-                <input
-                  type="text"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Adicionar comentário..."
-                  className={`flex-1 px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text} text-sm`}
-                />
-                <button
-                  type="submit"
-                  disabled={!newComment.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 text-sm"
-                >
-                  Enviar
-                </button>
+              {/* Seção de Status (apenas para ENTERPRISE e ADM) */}
+              {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
+                <div className={`px-6 py-4 border-b ${theme.border}`}>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>Alterar Status:</label>
+                  <select
+                    value={selectedTaskForComments.status}
+                    onChange={(e) => {
+                      handleStatusChange(selectedTaskForComments.id, e.target.value);
+                      setSelectedTaskForComments({...selectedTaskForComments, status: e.target.value});
+                    }}
+                    className={`px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
+                  >
+                    <option value="PENDING">Pendente</option>
+                    <option value="IN_PROGRESS">Em Progresso</option>
+                    <option value="COMPLETED">Concluída</option>
+                  </select>
+                </div>
+              )}
+              
+              {/* Comentários */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <h3 className={`font-semibold ${theme.text} mb-4 flex items-center`}>
+                  💬 Comentários ({comments.length})
+                </h3>
+                <div className="space-y-4 mb-6">
+                  {loadingComments ? (
+                    <div className={`text-center ${theme.textSecondary} py-8`}>Carregando comentários...</div>
+                  ) : comments.length === 0 ? (
+                    <div className={`text-center ${theme.textSecondary} py-8`}>
+                      <div className="text-4xl mb-2">💬</div>
+                      <p>Nenhum comentário ainda</p>
+                      <p className="text-xs">Seja o primeiro a comentar!</p>
+                    </div>
+                  ) : (
+                    comments.map((comment) => (
+                      <div key={comment.id} className={`${theme.secondaryBg} p-4 rounded-lg`}>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span className="text-blue-400 font-semibold text-sm">
+                              {comment.author.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span className={`font-medium ${theme.text} text-sm`}>{comment.author.name}</span>
+                              <span className={`px-2 py-0.5 rounded text-xs ${comment.author.accountType === 'ENTERPRISE' ? 'bg-purple-500/20 text-purple-400' : comment.author.accountType === 'ADM' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'}`}>
+                                {comment.author.accountType === 'ENTERPRISE' ? 'Enterprise' : comment.author.accountType === 'ADM' ? 'Admin' : 'Usuário'}
+                              </span>
+                              <span className={`text-xs ${theme.textSecondary}`}>
+                                {new Date(comment.createdAt).toLocaleDateString('pt-BR')} às {new Date(comment.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className={`${theme.text} text-sm leading-relaxed`}>{comment.content}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              
+              {/* Formulário de Comentário */}
+              <div className={`p-6 border-t ${theme.border}`}>
+                <form onSubmit={handleAddComment} className="flex space-x-3">
+                  <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-blue-400 font-semibold text-sm">
+                      {user?.name?.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 flex space-x-2">
+                    <input
+                      type="text"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Adicionar um comentário..."
+                      className={`flex-1 px-4 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
+                    />
+                    <button
+                      type="submit"
+                      disabled={!newComment.trim()}
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Enviar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Editar Projeto */}
+        {showEditProjectModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96 max-h-[90vh] overflow-y-auto`}>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Editar Projeto</h3>
+              <form onSubmit={handleUpdateProject} className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Nome</label>
+                  <input
+                    type="text"
+                    value={editingProject.name}
+                    onChange={(e) => setEditingProject({...editingProject, name: e.target.value})}
+                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Descrição</label>
+                  <textarea
+                    value={editingProject.description}
+                    onChange={(e) => setEditingProject({...editingProject, description: e.target.value})}
+                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Membros do Projeto</label>
+                  <div className={`${theme.secondaryBg} border ${theme.border} rounded-lg p-3 max-h-40 overflow-y-auto`}>
+                    {members.filter((member: any) => 
+                      member.id !== selectedProject?.ownerId && 
+                      member.accountType !== 'ENTERPRISE'
+                    ).map((member: any) => (
+                      <label key={member.id} className="flex items-center space-x-2 py-1">
+                        <input
+                          type="checkbox"
+                          checked={editingProject.memberIds.includes(member.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setEditingProject({
+                                ...editingProject,
+                                memberIds: [...editingProject.memberIds, member.id]
+                              });
+                            } else {
+                              setEditingProject({
+                                ...editingProject,
+                                memberIds: editingProject.memberIds.filter(id => id !== member.id)
+                              });
+                            }
+                          }}
+                          className="rounded"
+                        />
+                        <span className={`text-sm ${theme.text}`}>{member.name}</span>
+                        <span className={`text-xs ${theme.textSecondary}`}>({member.accountType})</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className={`text-xs ${theme.textSecondary} mt-1`}>
+                    Selecione os membros que terão acesso a este projeto
+                  </p>
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditProjectModal(false)}
+                    className={`px-4 py-2 ${theme.textSecondary} hover:${theme.text} transition-colors`}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Salvar
+                  </button>
+                </div>
               </form>
             </div>
           </div>

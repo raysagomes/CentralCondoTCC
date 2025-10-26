@@ -7,7 +7,7 @@ import { useTheme } from '../../src/contexts/ThemeContext';
 import { getThemeClasses } from '../../src/utils/themeClasses';
 
 export default function Members() {
-  const { isAuthenticated} = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { isDark } = useTheme();
   const theme = getThemeClasses(isDark);
   const router = useRouter();
@@ -126,48 +126,7 @@ export default function Members() {
     fetchMembers();
   }, []);
 
-  const mockMembers = [
-    {
-      id: 1,
-      name: 'João Silva',
-      email: 'joao@email.com',
-      role: 'admin',
-      apartment: 'Apto 101',
-      phone: '(11) 99999-9999',
-      joinDate: '2023-01-15',
-      status: 'active'
-    },
-    {
-      id: 2,
-      name: 'Maria Santos',
-      email: 'maria@email.com',
-      role: 'member',
-      apartment: 'Apto 205',
-      phone: '(11) 88888-8888',
-      joinDate: '2023-03-20',
-      status: 'active'
-    },
-    {
-      id: 3,
-      name: 'Pedro Lima',
-      email: 'pedro@email.com',
-      role: 'member',
-      apartment: 'Apto 304',
-      phone: '(11) 77777-7777',
-      joinDate: '2023-06-10',
-      status: 'inactive'
-    },
-    {
-      id: 4,
-      name: 'Ana Costa',
-      email: 'ana@email.com',
-      role: 'moderator',
-      apartment: 'Apto 402',
-      phone: '(11) 66666-6666',
-      joinDate: '2023-02-28',
-      status: 'active'
-    }
-  ];
+
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -205,7 +164,7 @@ export default function Members() {
     }
   };
 
-  const displayMembers = members.length > 0 ? members : mockMembers;
+  const displayMembers = members;
 
   return (
     <div className={`min-h-screen ${theme.bg}`}>
@@ -223,12 +182,14 @@ export default function Members() {
                 <h2 className={`text-lg font-semibold ${theme.text}`}>Lista de Membros</h2>
                 <p className={`text-sm ${theme.textSecondary}`}>{displayMembers.length} membros cadastrados</p>
               </div>
-              <button 
-                onClick={() => setShowModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Adicionar Membro
-              </button>
+              {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
+                <button 
+                  onClick={() => setShowModal(true)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Adicionar Membro
+                </button>
+              )}
             </div>
           </div>
 
@@ -274,8 +235,8 @@ export default function Members() {
                       <div className={`text-sm ${theme.textSecondary}`}>{member.phone || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(member.accountType || member.role)}`}>
-                        {getRoleName(member.accountType || member.role)}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(member.accountType)}`}>
+                        {getRoleName(member.accountType)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -347,7 +308,7 @@ export default function Members() {
               <div className="ml-4">
                 <p className={`text-sm ${theme.textSecondary}`}>Administradores</p>
                 <p className={`text-2xl font-bold ${theme.text}`}>
-                  {displayMembers.filter(m => ['ENTERPRISE', 'ADM'].includes(m.accountType || m.role)).length}
+                  {displayMembers.filter(m => ['ENTERPRISE', 'ADM'].includes(m.accountType)).length}
                 </p>
               </div>
             </div>

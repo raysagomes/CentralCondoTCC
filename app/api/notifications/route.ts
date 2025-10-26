@@ -26,7 +26,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+// Notificações são criadas automaticamente pelo sistema
+
+export async function PATCH(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
@@ -38,47 +40,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const sender = await prisma.user.findUnique({
-      where: { id: decoded.userId }
+    const { notificationId } = await request.json();
+
+    await prisma.notification.update({
+      where: { id: notificationId },
+      data: { status: 'read' }
     });
 
-    if (sender?.accountType !== 'COMPANY') {
-      return NextResponse.json({ error: 'Apenas empresas podem enviar notificações' }, { status: 403 });
-    }
-
-    const { title, message, type, recipients, selectedMembers } = await request.json();
-
-    let users;
-    if (recipients === 'specific' && selectedMembers?.length > 0) {
-      users = await prisma.user.findMany({
-        where: { 
-          id: { in: selectedMembers }
-        }
-      });
-    } else if (recipients === 'self') {
-      users = [sender];
-    } else {
-      // Para "todos", incluir tanto USERs quanto o próprio COMPANY que está enviando
-      users = await prisma.user.findMany();
-    }
-
-    const notifications = await Promise.all(
-      users.map((user: any) => 
-        prisma.notification.create({
-          data: {
-            title,
-            message,
-            type: type || 'GENERAL',
-            userId: user.id,
-            seen: false
-          }
-        })
-      )
-    );
-
-    return NextResponse.json({ success: true, count: notifications.length });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Erro ao enviar notificações:', error);
+    console.error('Erro ao marcar notificação como lida:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }

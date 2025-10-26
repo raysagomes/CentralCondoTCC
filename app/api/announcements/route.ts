@@ -72,6 +72,35 @@ export async function POST(request: NextRequest) {
       include: { author: { select: { name: true } } }
     });
 
+    // Criar notificações para todos os usuários da empresa
+    const enterpriseId = user.accountType === 'ENTERPRISE' ? user.id : user.enterpriseId;
+    
+    if (enterpriseId) {
+      const usersToNotify = await prisma.user.findMany({
+        where: {
+          OR: [
+            { id: enterpriseId },
+            { enterpriseId: enterpriseId }
+          ],
+          id: { not: user.id } // Não notificar o próprio autor
+        }
+      });
+
+      await Promise.all(
+        usersToNotify.map(targetUser => 
+          prisma.notification.create({
+            data: {
+              title: `Novo aviso: ${title}`,
+              message: `${user.name} publicou um novo aviso com prioridade ${priority === 'HIGH' ? 'Alta' : priority === 'MEDIUM' ? 'Média' : 'Normal'}`,
+              type: 'GENERAL',
+              status: 'UNREAD',
+              userId: targetUser.id
+            }
+          })
+        )
+      );
+    }
+
     return NextResponse.json({ announcement });
   } catch (error) {
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });

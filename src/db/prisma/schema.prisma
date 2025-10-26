@@ -157,7 +157,7 @@ model Notification {
   type      NotificationType
   title     String
   message   String
-  seen      Boolean          @default(false)
+  status    NotificationStatus @default(UNREAD)
   createdAt DateTime         @default(now())
 
   // Relacionamentos opcionais
@@ -173,6 +173,11 @@ enum NotificationType {
   EVENT
   ALERT
   GENERAL
+}
+
+enum NotificationStatus {
+  READ
+  UNREAD
 }
 
 //////////////////////////

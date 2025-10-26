@@ -12,7 +12,7 @@ export class TaskService {
       throw new Error('Título e projeto são obrigatórios');
     }
 
-    await this.projectService.validateProjectOwnership(projectId, createdById);
+    await this.projectService.validateProjectAccess(projectId, createdById);
 
     return this.taskRepository.create({
       title,

@@ -151,41 +151,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleSendNotification = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/notifications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          ...newNotification,
-          selectedMembers: newNotification.recipients === 'specific' ? selectedMembers : 
-                          newNotification.recipients === 'self' ? [user?.id] : []
-        })
-      });
-
-      if (response.ok) {
-        setShowNotificationModal(false);
-        setNewNotification({ title: '', message: '', type: 'GENERAL', recipients: 'all' });
-        setSelectedMembers([]);
-        loadNotifications();
-        window.dispatchEvent(new Event('notificationsUpdated'));
-        alert('Notificação enviada com sucesso!');
-      } else {
-        alert('Erro ao enviar notificação');
-      }
-    } catch (error) {
-      console.error('Erro ao enviar notificação:', error);
-      alert('Erro ao enviar notificação');
-    }
-  };
-
-
-
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push('/auth');
@@ -267,14 +232,6 @@ export default function Dashboard() {
               <h1 className={`text-3xl font-bold ${theme.text}`}>Dashboard</h1>
               <p className={`${theme.textSecondary} mt-2`}>Bem-vindo, {user?.name}!</p>
             </div>
-            {user?.accountType === 'ENTERPRISE' && (
-              <button 
-                onClick={() => setShowNotificationModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Enviar Notificação
-              </button>
-            )}
           </div>
         </div>
 
@@ -493,109 +450,6 @@ export default function Dashboard() {
         </div>
 
 
-
-        {/* Modal Enviar Notificação */}
-        {showNotificationModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
-              <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Enviar Notificação do Sistema</h3>
-              <p className={`text-sm ${theme.textSecondary} mb-4`}>Para avisos gerais, use o Mural. Notificações são para alertas importantes do sistema.</p>
-              <form onSubmit={handleSendNotification} className="space-y-4">
-                <div>
-                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Título</label>
-                  <input
-                    type="text"
-                    value={newNotification.title}
-                    onChange={(e) => setNewNotification({...newNotification, title: e.target.value})}
-                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Mensagem</label>
-                  <textarea
-                    value={newNotification.message}
-                    onChange={(e) => setNewNotification({...newNotification, message: e.target.value})}
-                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
-                    rows={3}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Tipo</label>
-                  <select
-                    value={newNotification.type}
-                    onChange={(e) => setNewNotification({...newNotification, type: e.target.value})}
-                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
-                  >
-                    <option value="GENERAL">Geral</option>
-                    <option value="ALERT">Alerta Urgente</option>
-                  </select>
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Destinatários</label>
-                  <select
-                    value={newNotification.recipients}
-                    onChange={(e) => {
-                      setNewNotification({...newNotification, recipients: e.target.value});
-                      if (e.target.value === 'all') {
-                        setSelectedMembers([]);
-                      } else if (e.target.value === 'specific') {
-                        fetchMembers();
-                      } else if (e.target.value === 'self') {
-                        setSelectedMembers([]);
-                      }
-                    }}
-                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
-                  >
-                    <option value="all">Todos os membros</option>
-                    <option value="self">Apenas para mim</option>
-                    <option value="specific">Membros específicos</option>
-                  </select>
-                </div>
-                {newNotification.recipients === 'specific' && (
-                  <div>
-                    <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Selecionar Membros</label>
-                    <div className={`max-h-32 overflow-y-auto border ${theme.border} rounded-lg p-2 ${theme.secondaryBg}`}>
-                      {members.map((member) => (
-                        <label key={member.id} className="flex items-center space-x-2 py-1">
-                          <input
-                            type="checkbox"
-                            checked={selectedMembers.includes(member.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedMembers([...selectedMembers, member.id]);
-                              } else {
-                                setSelectedMembers(selectedMembers.filter(id => id !== member.id));
-                              }
-                            }}
-                            className="rounded"
-                          />
-                          <span className={`text-sm ${theme.text}`}>{member.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div className="flex justify-end space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowNotificationModal(false)}
-                    className={`px-4 py-2 ${theme.textSecondary} hover:${theme.text} transition-colors`}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Enviar
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
 
         {/* Toast de Novo Aviso */}
         {showToast && (

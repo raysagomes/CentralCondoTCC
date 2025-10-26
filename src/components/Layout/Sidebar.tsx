@@ -1,13 +1,13 @@
 'use client';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../../hooks/useAuth';
-import { 
-  FaProjectDiagram, 
-  FaCalendarAlt, 
-  FaMoneyBillWave, 
-  FaUsers, 
-  FaUser, 
-  FaPuzzlePiece 
+import {
+  FaProjectDiagram,
+  FaCalendarAlt,
+  FaMoneyBillWave,
+  FaUsers,
+  FaUser,
+  FaPuzzlePiece
 } from 'react-icons/fa';
 import { MdDashboard } from 'react-icons/md';
 import { BsFileText } from 'react-icons/bs';
@@ -16,10 +16,10 @@ import { useState, useEffect } from 'react';
 const menuItems = [
   { icon: MdDashboard, path: '/dashboard', label: 'Dashboard', bgColor: 'bg-blue-500' },
   { icon: BsFileText, path: '/avisos', label: 'Avisos', bgColor: 'bg-cyan-400' },
+  { icon: FaProjectDiagram, path: '/projects', label: 'Projetos', bgColor: 'bg-green-400' },
   { icon: FaCalendarAlt, path: '/calendar', label: 'Calendário', bgColor: 'bg-yellow-300' },
   { icon: FaUsers, path: '/members', label: 'Membros', bgColor: 'bg-purple-400' },
   { icon: FaMoneyBillWave, path: '/payments', label: 'Pagamentos', bgColor: 'bg-pink-500' },
-  { icon: FaUser, path: '/profile', label: 'Perfil', bgColor: 'bg-gray-600' },
 ];
 
 export default function Sidebar() {
@@ -31,7 +31,7 @@ export default function Sidebar() {
     const checkNewAnnouncements = () => {
       const lastCheck = localStorage.getItem('lastAnnouncementCheck');
       const announcements = localStorage.getItem('announcements');
-      
+
       if (announcements) {
         const parsedAnnouncements = JSON.parse(announcements);
         if (parsedAnnouncements.length > 0) {
@@ -53,7 +53,7 @@ export default function Sidebar() {
       {/* Menu Items - apenas ícones circulares */}
       {menuItems.map((item) => {
         const isActive = pathname === item.path;
-        
+
         return (
           <button
             key={item.path}
@@ -64,11 +64,10 @@ export default function Sidebar() {
               }
               router.push(item.path);
             }}
-            className={`relative w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:scale-110 ${
-              isActive 
-                ? `${item.bgColor} text-white` 
-                : `${item.bgColor} text-white opacity-70 hover:opacity-100`
-            }`}
+            className={`relative w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:scale-110 ${isActive
+              ? `${item.bgColor} text-white`
+              : `${item.bgColor} text-white opacity-70 hover:opacity-100`
+              }`}
             title={item.label}
           >
             <item.icon className="text-xl" />
@@ -80,7 +79,7 @@ export default function Sidebar() {
           </button>
         );
       })}
-      
+
 
     </div>
   );

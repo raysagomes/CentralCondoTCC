@@ -15,7 +15,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const updates = await request.json();
-    const taskId = params.id;
+    const taskId = await params.id;
 
     // Buscar tarefa atual para verificar mudança de status
     const currentTask = await prisma.task.findUnique({

@@ -68,8 +68,8 @@ export async function POST(request: NextRequest) {
       where: { id: decoded.userId }
     });
 
-    if (!creator || creator.accountType !== 'ENTERPRISE') {
-      return NextResponse.json({ error: 'Apenas ENTERPRISE pode criar membros' }, { status: 403 });
+    if (!creator || !['ENTERPRISE', 'ADM'].includes(creator.accountType)) {
+      return NextResponse.json({ error: 'Apenas ENTERPRISE e ADM podem criar membros' }, { status: 403 });
     }
 
     const { name, email, accountType } = await request.json();
@@ -91,6 +91,9 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(temporaryPassword);
     const hashedSecurityWord = await hashPassword('secret');
 
+    // Determinar o enterpriseId correto
+    const enterpriseId = creator.accountType === 'ENTERPRISE' ? creator.id : creator.enterpriseId;
+
     const member = await prisma.user.create({
       data: {
         name,
@@ -98,7 +101,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         securityWord: hashedSecurityWord,
         accountType,
-        enterpriseId: creator.id
+        enterpriseId
       },
       select: {
         id: true,
