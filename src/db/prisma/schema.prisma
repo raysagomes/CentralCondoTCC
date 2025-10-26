@@ -30,6 +30,7 @@ model User {
   ownedProjects Project[] @relation("UserOwnedProjects")
   announcements Announcement[]
   payments     Payment[] @relation("UserPayments")
+  events       Event[]   @relation("EnterpriseEvents")
   enterprise   User?     @relation("EnterpriseUsers", fields: [enterpriseId], references: [id])
   members      User[]    @relation("EnterpriseUsers")
 
@@ -138,6 +139,8 @@ model Event {
   id          String   @id @default(uuid())
   projectId   String?
   project     Project? @relation(fields: [projectId], references: [id])
+  enterpriseId String
+  enterprise  User     @relation("EnterpriseEvents", fields: [enterpriseId], references: [id])
   title       String
   description String?
   date        DateTime
