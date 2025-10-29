@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   experimental: {
-    allowedDevOrigins: ['192.168.56.1']
+    serverComponentsExternalPackages: ['@prisma/client', 'prisma']
   }
 }
 
