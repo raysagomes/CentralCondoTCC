@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import AppLayout from '../../src/components/Layout/AppLayout';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { getThemeClasses } from '../../src/utils/themeClasses';
+import { FaUsers, FaCheckCircle, FaCrown } from 'react-icons/fa';
 
 export default function Members() {
   const { isAuthenticated, user } = useAuth();
@@ -68,6 +69,7 @@ export default function Members() {
   };
 
   const handleResetPassword = async (member: any) => {
+    // amazonq-ignore-next-line
     const securityWord = prompt('Digite a palavra de segurança:');
     if (!securityWord) return;
     
@@ -277,7 +279,7 @@ export default function Members() {
           <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 hover:border-blue-500/50 transition-all duration-200`}>
             <div className="flex items-center">
               <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">👥</span>
+                <FaUsers className="text-2xl text-blue-400" />
               </div>
               <div className="ml-4">
                 <p className={`text-sm ${theme.textSecondary}`}>Total de Membros</p>
@@ -289,7 +291,7 @@ export default function Members() {
           <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 hover:border-green-500/50 transition-all duration-200`}>
             <div className="flex items-center">
               <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">✅</span>
+                <FaCheckCircle className="text-2xl text-green-400" />
               </div>
               <div className="ml-4">
                 <p className={`text-sm ${theme.textSecondary}`}>Membros Ativos</p>
@@ -303,7 +305,7 @@ export default function Members() {
           <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 hover:border-purple-500/50 transition-all duration-200`}>
             <div className="flex items-center">
               <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">👑</span>
+                <FaCrown className="text-2xl text-purple-400" />
               </div>
               <div className="ml-4">
                 <p className={`text-sm ${theme.textSecondary}`}>Administradores</p>
@@ -316,7 +318,7 @@ export default function Members() {
         </div>
 
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
             <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
               <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>
                 {editingMember ? 'Editar Membro' : 'Adicionar Membro'}

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import AppLayout from '../../src/components/Layout/AppLayout';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { getThemeClasses } from '../../src/utils/themeClasses';
-import { FaPlus } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaUser, FaCalendarAlt, FaUserTie, FaComments, FaTimes } from 'react-icons/fa';
 import { useProjects } from '../../src/hooks/useProjects';
 
 export default function Projects() {
@@ -167,7 +167,10 @@ export default function Projects() {
         undefined
       );
       if (result.success) {
-        window.location.reload();
+        const updatedProject = projects.find(p => p.id === selectedProject.id);
+        if (updatedProject) {
+          setSelectedProject({...updatedProject});
+        }
       }
     }
   };
@@ -180,11 +183,16 @@ export default function Projects() {
     }
   };
 
-  const handleEditTask = (task: any) => {
+  const handleEditTask = async (task: any) => {
     setEditingTask({ 
       ...task, 
+      description: task.description || '',
       assignedToId: task.assignedTo?.id || '' 
     });
+    // Garantir que os membros do projeto estejam carregados
+    if (selectedProject) {
+      await fetchProjectMembers(selectedProject.id);
+    }
     setShowEditModal(true);
   };
 
@@ -193,7 +201,7 @@ export default function Projects() {
     if (editingTask) {
       const result = await updateTask(editingTask.id, {
         title: editingTask.title,
-        description: editingTask.description,
+        description: editingTask.description || '',
         assignedToId: editingTask.assignedToId || null,
         status: editingTask.status
       });
@@ -239,8 +247,6 @@ export default function Projects() {
         const updatedProject = await response.json();
         setSelectedProject(updatedProject);
         setShowEditProjectModal(false);
-        // Atualizar a lista de projetos também
-        window.location.reload();
       }
     } catch (error) {
       console.error('Erro ao atualizar projeto:', error);
@@ -307,7 +313,7 @@ export default function Projects() {
                         Editar Projeto
                       </button>
                       <button 
-                        onClick={handleQuickCreateTask}
+                        onClick={() => setShowTaskModal(true)}
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                       >
                         Nova Tarefa
@@ -333,22 +339,22 @@ export default function Projects() {
                             onClick={(e) => { e.stopPropagation(); handleEditTask(task); }}
                             className="text-blue-400 hover:text-blue-300 text-xs p-1 rounded hover:bg-blue-500/20 transition-all duration-200"
                           >
-                            ✏️
+                            <FaEdit />
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
                             className="text-red-400 hover:text-red-300 text-xs p-1 rounded hover:bg-red-500/20 transition-all duration-200"
                           >
-                            🗑️
+                            <FaTrash />
                           </button>
                         </div>
                       )}
                     </div>
                     <h3 className={`font-semibold ${theme.text} mb-2 line-clamp-2`}>{task.title}</h3>
                     <div className={`text-xs ${theme.textSecondary} space-y-1`}>
-                      <div>👤 {task.assignedTo?.name || 'Não atribuído'}</div>
-                      <div>📅 {new Date(task.createdAt).toLocaleDateString('pt-BR')}</div>
-                      <div>👨‍💼 {task.createdBy?.name}</div>
+                      <div className="flex items-center"><FaUser className="mr-1" /> {task.assignedTo?.name || 'Não atribuído'}</div>
+                      <div className="flex items-center"><FaCalendarAlt className="mr-1" /> {new Date(task.createdAt).toLocaleDateString('pt-BR')}</div>
+                      <div className="flex items-center"><FaUserTie className="mr-1" /> {task.createdBy?.name}</div>
                     </div>
                   </div>
                 ))}
@@ -425,7 +431,7 @@ export default function Projects() {
 
         {/* Modal Criar Projeto */}
         {showCreateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
             <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
               <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Criar Novo Projeto</h3>
               <form onSubmit={handleCreateProject} className="space-y-4">
@@ -470,7 +476,7 @@ export default function Projects() {
 
         {/* Modal Nova Tarefa */}
         {showTaskModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
             <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
               <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Nova Tarefa</h3>
               <form onSubmit={handleCreateTask} className="space-y-4">
@@ -528,7 +534,7 @@ export default function Projects() {
 
         {/* Modal Editar Tarefa */}
         {showEditModal && editingTask && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
             <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
               <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Editar Tarefa</h3>
               <form onSubmit={handleUpdateTask} className="space-y-4">
@@ -545,6 +551,7 @@ export default function Projects() {
                 <div>
                   <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Descrição</label>
                   <textarea
+                    key={editingTask.id}
                     value={editingTask.description || ''}
                     onChange={(e) => setEditingTask({...editingTask, description: e.target.value})}
                     className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
@@ -599,7 +606,7 @@ export default function Projects() {
 
         {/* Modal Comentários */}
         {showCommentsModal && selectedTaskForComments && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className={`${theme.cardBg} border ${theme.border} rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col`}>
               {/* Cabeçalho da Tarefa */}
               <div className={`p-6 border-b ${theme.border}`}>
@@ -610,15 +617,15 @@ export default function Projects() {
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedTaskForComments.status)}`}>
                         {selectedTaskForComments.status === 'PENDING' ? 'Pendente' : selectedTaskForComments.status === 'IN_PROGRESS' ? 'Em Progresso' : 'Concluída'}
                       </span>
-                      <span className={theme.textSecondary}>👤 {selectedTaskForComments.assignedTo?.name || 'Não atribuído'}</span>
-                      <span className={theme.textSecondary}>📅 {new Date(selectedTaskForComments.createdAt).toLocaleDateString('pt-BR')}</span>
+                      <span className={`${theme.textSecondary} flex items-center`}><FaUser className="mr-1" /> {selectedTaskForComments.assignedTo?.name || 'Não atribuído'}</span>
+                      <span className={`${theme.textSecondary} flex items-center`}><FaCalendarAlt className="mr-1" /> {new Date(selectedTaskForComments.createdAt).toLocaleDateString('pt-BR')}</span>
                     </div>
                   </div>
                   <button 
                     onClick={() => setShowCommentsModal(false)}
                     className={`${theme.textSecondary} hover:${theme.text} p-2 rounded-lg hover:bg-gray-500/20`}
                   >
-                    ✕
+                    <FaTimes />
                   </button>
                 </div>
                 {selectedTaskForComments.description && (
@@ -651,14 +658,14 @@ export default function Projects() {
               {/* Comentários */}
               <div className="flex-1 overflow-y-auto p-6">
                 <h3 className={`font-semibold ${theme.text} mb-4 flex items-center`}>
-                  💬 Comentários ({comments.length})
+                  <FaComments className="mr-2" />Comentários ({comments.length})
                 </h3>
                 <div className="space-y-4 mb-6">
                   {loadingComments ? (
                     <div className={`text-center ${theme.textSecondary} py-8`}>Carregando comentários...</div>
                   ) : comments.length === 0 ? (
                     <div className={`text-center ${theme.textSecondary} py-8`}>
-                      <div className="text-4xl mb-2">💬</div>
+                      <div className="text-4xl mb-2"><FaComments /></div>
                       <p>Nenhum comentário ainda</p>
                       <p className="text-xs">Seja o primeiro a comentar!</p>
                     </div>
@@ -722,7 +729,7 @@ export default function Projects() {
 
         {/* Modal Editar Projeto */}
         {showEditProjectModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
             <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96 max-h-[90vh] overflow-y-auto`}>
               <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Editar Projeto</h3>
               <form onSubmit={handleUpdateProject} className="space-y-4">

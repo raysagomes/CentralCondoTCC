@@ -358,7 +358,7 @@ export default function Payments() {
 
           {/* Modals */}
           {showBoletoModal && selectedPayment && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
               <div className="bg-[#1a1d4f] border border-[#2a2d6f] rounded-xl p-6 w-96">
                 <h3 className="text-lg font-semibold text-white mb-4">Dados do Pagamento</h3>
                 <div className="space-y-4">
@@ -404,7 +404,7 @@ export default function Payments() {
           )}
 
           {showAddModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
               <div className="bg-[#1a1d4f] border border-[#2a2d6f] rounded-xl p-6 w-96">
                 <h3 className="text-lg font-semibold text-white mb-4">Adicionar Boleto</h3>
                 <form onSubmit={handleAddPayment} className="space-y-4">

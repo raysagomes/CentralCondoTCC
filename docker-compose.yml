@@ -3,9 +3,9 @@ services:
     image: postgres:15
     restart: always
     environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: central_condo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: central-condo
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -19,9 +19,6 @@ services:
       - /app/node_modules
     ports:
       - "3000:3000"
-    environment:
-      - DATABASE_URL=postgresql://root:root@db:5432/central_condo?schema=public
-      - HOSTNAME=0.0.0.0
     depends_on:
       - db
     command: sh -c "npx prisma generate && npx prisma db push && npm run dev"
