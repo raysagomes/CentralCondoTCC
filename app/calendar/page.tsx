@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import AppLayout from '../../src/components/Layout/AppLayout';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { getThemeClasses } from '../../src/utils/themeClasses';
+import { FaCalendarAlt, FaClock } from 'react-icons/fa';
 
 
 
@@ -36,7 +37,9 @@ export default function Calendar() {
 
         const groupedEvents: Record<string, any[]> = {};
         data.forEach((event: any) => {
+          if (!event.date) return;
           const eventDate = new Date(event.date);
+          if (isNaN(eventDate.getTime())) return;
           const dateKey = eventDate.toISOString().split('T')[0];
           if (!groupedEvents[dateKey]) {
             groupedEvents[dateKey] = [];
@@ -200,7 +203,37 @@ export default function Calendar() {
   };
 
   const getAllEvents = () => {
-    return allEvents.sort((a, b) => new Date(a.date + ' ' + a.time).getTime() - new Date(b.date + ' ' + b.time).getTime());
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const futureEvents = allEvents
+      .filter(event => {
+        if (!event.date) return false;
+        const eventDate = new Date(event.date);
+        if (isNaN(eventDate.getTime())) return false;
+        
+        // Comparar apenas a data, ignorando horário para eventos do dia atual
+        const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+        return eventDay >= today;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        
+        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0;
+        
+        const [hoursA, minutesA] = (a.time || '00:00').split(':');
+        const [hoursB, minutesB] = (b.time || '00:00').split(':');
+        
+        const dateTimeA = new Date(a.date);
+        const dateTimeB = new Date(b.date);
+        dateTimeA.setHours(parseInt(hoursA), parseInt(minutesA), 0, 0);
+        dateTimeB.setHours(parseInt(hoursB), parseInt(minutesB), 0, 0);
+        
+        return dateTimeA.getTime() - dateTimeB.getTime();
+      });
+    
+    return futureEvents;
   };
 
   const renderCalendar = () => {
@@ -350,8 +383,19 @@ export default function Calendar() {
                     </div>
                   </div>
                   <div className="text-xs text-gray-400 space-y-1">
-                    <div>📅 {new Date(event.date).toLocaleDateString('pt-BR')}</div>
-                    <div>🕐 {event.time || '00:00'}</div>
+                    <div className="flex items-center"><FaCalendarAlt className="mr-1" /> 
+                      {(() => {
+                        try {
+                          if (!event.date) return 'Data não definida';
+                          const date = new Date(event.date);
+                          if (isNaN(date.getTime())) return 'Data inválida';
+                          return date.toLocaleDateString('pt-BR');
+                        } catch {
+                          return 'Data inválida';
+                        }
+                      })()} 
+                    </div>
+                    <div className="flex items-center"><FaClock className="mr-1" /> {event.time || '00:00'}</div>
                     <div className="px-2 py-1 rounded text-xs text-white bg-blue-500 inline-block">
                       Evento
                     </div>
@@ -365,7 +409,7 @@ export default function Calendar() {
               ))}
               {getAllEvents().length === 0 && (
                 <div className={`text-center py-8 ${theme.textSecondary}`}>
-                  <div className="text-2xl mb-2">📅</div>
+                  <FaCalendarAlt className="text-2xl mb-2 mx-auto" />
                   <p className="text-sm">Nenhum evento agendado</p>
                 </div>
               )}
@@ -402,10 +446,19 @@ export default function Calendar() {
         </div>
 
         {showEventModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
             <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
               <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>
-                Adicionar Evento - {selectedDate ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR') : ''}
+                Adicionar Evento - {(() => {
+                  try {
+                    if (!selectedDate) return '';
+                    const date = new Date(selectedDate);
+                    if (isNaN(date.getTime())) return '';
+                    return date.toLocaleDateString('pt-BR');
+                  } catch {
+                    return '';
+                  }
+                })()}
               </h3>
               <form onSubmit={handleCreateEvent} className="space-y-4">
                 <div>
@@ -460,7 +513,7 @@ export default function Calendar() {
         )}
 
         {showEditModal && editingEvent && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
             <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
               <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Editar Evento</h3>
               <form onSubmit={handleUpdateEvent} className="space-y-4">

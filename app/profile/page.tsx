@@ -17,10 +17,7 @@ export default function Profile() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
-    bio: '',
-    company: '',
-    position: ''
+    phone: ''
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -41,10 +38,7 @@ export default function Profile() {
       setFormData({
         name: user.name || '',
         email: user.email || '',
-        phone: user.phone || '',
-        bio: user.bio || '',
-        company: user.company || '',
-        position: user.position || ''
+        phone: user.phone || ''
       });
     }
   }, [user]);
@@ -172,8 +166,7 @@ export default function Profile() {
               </div>
               <div>
                 <h2 className={`text-2xl font-bold ${theme.text}`}>{formData.name || 'Usuário'}</h2>
-                <p className={theme.textSecondary}>{formData.position || 'Cargo não informado'}</p>
-                <p className={`text-sm ${theme.textSecondary}`}>{formData.company || 'Empresa não informada'}</p>
+                <p className={theme.textSecondary}>{user?.accountType === 'ENTERPRISE' ? 'Enterprise' : user?.accountType === 'ADM' ? 'Administrador' : 'Usuário'}</p>
               </div>
             </div>
 
@@ -205,61 +198,9 @@ export default function Profile() {
                   <p className={`${theme.text} py-2`}>{formData.email || 'Não informado'}</p>
                 )}
               </div>
-
               <div>
-                <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Telefone</label>
-                {isEditing ? (
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    className={`w-full px-3 py-2 rounded-lg focus:outline-none ${theme.input}`}
-                  />
-                ) : (
-                  <p className={`${theme.text} py-2`}>{formData.phone || 'Não informado'}</p>
-                )}
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Empresa</label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={formData.company}
-                    onChange={(e) => setFormData({...formData, company: e.target.value})}
-                    className={`w-full px-3 py-2 rounded-lg focus:outline-none ${theme.input}`}
-                  />
-                ) : (
-                  <p className={`${theme.text} py-2`}>{formData.company || 'Não informado'}</p>
-                )}
-              </div>
-
-              <div className="md:col-span-2">
-                <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Cargo</label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={formData.position}
-                    onChange={(e) => setFormData({...formData, position: e.target.value})}
-                    className={`w-full px-3 py-2 rounded-lg focus:outline-none ${theme.input}`}
-                  />
-                ) : (
-                  <p className={`${theme.text} py-2`}>{formData.position || 'Não informado'}</p>
-                )}
-              </div>
-
-              <div className="md:col-span-2">
-                <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Bio</label>
-                {isEditing ? (
-                  <textarea
-                    value={formData.bio}
-                    onChange={(e) => setFormData({...formData, bio: e.target.value})}
-                    className={`w-full px-3 py-2 rounded-lg focus:outline-none ${theme.input}`}
-                    rows={3}
-                  />
-                ) : (
-                  <p className={`${theme.text} py-2`}>{formData.bio || 'Nenhuma descrição adicionada'}</p>
-                )}
+                <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Tipo de Conta</label>
+                <p className={`${theme.text} py-2`}>{user?.accountType === 'ENTERPRISE' ? 'Enterprise' : user?.accountType === 'ADM' ? 'Administrador' : 'Usuário'}</p>
               </div>
             </div>
           </div>

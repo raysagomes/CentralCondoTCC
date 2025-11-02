@@ -26,6 +26,7 @@ model User {
   comments      Comment[]
   notifications Notification[]
   ownedProjects Project[] @relation("UserOwnedProjects")
+  payments     Payment[] @relation("UserPayments")
 }
 
 enum AccountType {
@@ -113,12 +114,15 @@ model Comment {
 
 model Payment {
   id        String   @id @default(uuid())
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id])
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+  ownerId   String
+  owner     User     @relation("UserPayments", fields: [ownerId], references: [id])
   title     String
   dueDate   DateTime
   link      String?
   paid      Boolean  @default(false)
+  paidDate  DateTime?
   createdAt DateTime @default(now())
   notifications Notification[] @relation("PaymentNotifications")
 }
@@ -150,7 +154,7 @@ model Notification {
   type      NotificationType
   title     String
   message   String
-  seen      Boolean          @default(false)
+  status    String           @default("unread")
   createdAt DateTime         @default(now())
 
   // Relacionamentos opcionais

@@ -52,6 +52,23 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Criar notificação imediatamente
+    const now = new Date();
+    const paymentDueDate = new Date(dueDate);
+    const daysUntilDue = Math.ceil((paymentDueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntilDue <= 14 && daysUntilDue >= 0) {
+      await prisma.notification.create({
+        data: {
+          title: 'Pagamento Próximo do Vencimento',
+          message: `O pagamento "${title}" vence em ${daysUntilDue} dia(s)`,
+          type: 'PAYMENT',
+          userId: decoded.userId,
+          paymentId: payment.id
+        }
+      });
+    }
+
     return NextResponse.json(payment, { status: 201 });
   } catch (error) {
     console.error('Erro ao criar pagamento:', error);

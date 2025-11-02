@@ -39,7 +39,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     // Se a tarefa foi concluída, notificar administradores
     if (updates.status === 'COMPLETED' && currentTask.status !== 'COMPLETED') {
       const admins = await prisma.user.findMany({
-        where: { accountType: 'COMPANY' }
+        where: { accountType: 'ENTERPRISE' }
       });
 
       const userName = updatedTask.assignedTo?.name || 'Usuário';
@@ -55,7 +55,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
               message: `${userName} concluiu a tarefa "${taskTitle}" do projeto ${projectName}`,
               type: 'GENERAL',
               userId: admin.id,
-              seen: false
+              status: 'UNREAD'
             }
           })
         )

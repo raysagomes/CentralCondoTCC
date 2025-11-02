@@ -72,6 +72,52 @@ export default function Dashboard() {
     setHasNewAnnouncement(hasUnread);
   };
 
+  const checkPaymentNotifications = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const paymentsResponse = await fetch('/api/payments', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (paymentsResponse.ok) {
+        const payments = await paymentsResponse.json();
+        const now = new Date();
+        
+        for (const payment of payments) {
+          if (!payment.paid) {
+            const dueDate = new Date(payment.dueDate);
+            const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            
+            if (daysUntilDue <= 7 && daysUntilDue >= 0) {
+              // Verificar se já existe notificação recente para este pagamento
+              const existingNotifications = dashboardNotifications.filter(n => 
+                n.type === 'PAYMENT' && n.message.includes(payment.title)
+              );
+              
+              if (existingNotifications.length === 0) {
+                // Criar notificação
+                await fetch('/api/notifications', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify({
+                    title: 'Pagamento Próximo do Vencimento',
+                    message: `O pagamento "${payment.title}" vence em ${daysUntilDue} dia(s)`,
+                    type: 'PAYMENT'
+                  })
+                });
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar pagamentos:', error);
+    }
+  };
+
   const loadNotifications = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -123,11 +169,31 @@ export default function Dashboard() {
       });
       if (response.ok) {
         const data = await response.json();
-        const sortedEvents = data.sort((a: any, b: any) => 
-          new Date(a.date + ' ' + (a.time || '00:00')).getTime() - 
-          new Date(b.date + ' ' + (b.time || '00:00')).getTime()
-        );
-        setRecentEvents(sortedEvents);
+        const now = new Date();
+        const futureEvents = data
+          .filter((event: any) => {
+            if (!event.date) return false;
+            const eventDate = new Date(event.date);
+            if (isNaN(eventDate.getTime())) return false;
+            const [hours, minutes] = (event.time || '00:00').split(':');
+            eventDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+            return eventDate >= now;
+          })
+          .sort((a: any, b: any) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            
+            if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0;
+            
+            const [hoursA, minutesA] = (a.time || '00:00').split(':');
+            dateA.setHours(parseInt(hoursA), parseInt(minutesA), 0, 0);
+            
+            const [hoursB, minutesB] = (b.time || '00:00').split(':');
+            dateB.setHours(parseInt(hoursB), parseInt(minutesB), 0, 0);
+            
+            return dateA.getTime() - dateB.getTime();
+          });
+        setRecentEvents(futureEvents);
       }
     } catch (error) {
       console.error('Erro ao buscar eventos:', error);
@@ -325,7 +391,9 @@ export default function Dashboard() {
                   <div className="w-2 h-2 bg-blue-400 rounded-full flex-shrink-0"></div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${theme.text} truncate`}>{event.title}</p>
-                    <p className={`text-xs ${theme.textSecondary}`}>{new Date(event.date).toLocaleDateString('pt-BR')}</p>
+                    <p className={`text-xs ${theme.textSecondary}`}>
+                      {event.date ? new Date(event.date).toLocaleDateString('pt-BR') : 'Data não definida'}
+                    </p>
                   </div>
                 </div>
               ))}

@@ -192,7 +192,7 @@ export default function Avisos() {
           )}
 
           {showModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
               <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
                 <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Criar Novo Aviso</h3>
                 <form onSubmit={handleCreate} className="space-y-4">
@@ -250,7 +250,7 @@ export default function Avisos() {
           )}
 
           {selectedAnnouncement && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
               <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96 max-w-lg`}>
                 <div className="flex justify-between items-start mb-4">
                   <h3 className={`text-lg font-semibold ${theme.text}`}>{selectedAnnouncement.title}</h3>
