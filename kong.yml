@@ -1,0 +1,92 @@
+_format_version: "3.0"
+_transform: true
+
+upstreams:
+  - name: upstream-auth
+    healthchecks:
+      active:
+        http_path: /health
+        timeout: 1                       # tempo máx. do check (seg)
+        healthy:
+          http_statuses: [200, 302]      # quais status contam como OK
+          successes: 1
+          interval: 10                   # periodicidade (seg)
+        unhealthy:
+          http_statuses: [429, 404, 500, 501, 502, 503, 504, 505]
+          http_failures: 3
+          tcp_failures: 3
+          timeouts: 3
+          interval: 10
+    targets:
+      - target: auth:3001
+
+  - name: upstream-condominio
+    targets:
+      - target: condominio:3002
+
+  - name: upstream-financeiro
+    targets:
+      - target: financeiro:3003
+
+  - name: upstream-projetos
+    targets:
+      - target: projetos:3004
+
+services:
+  - name: svc-auth
+    host: upstream-auth
+    port: 80
+    protocol: http
+    routes:
+      - name: r-auth
+        paths: ["/auth"]
+        strip_path: true
+        methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
+
+  - name: svc-condominio
+    host: upstream-condominio
+    port: 80
+    protocol: http
+    routes:
+      - name: r-condominio
+        paths: ["/condominio"]
+        strip_path: true
+        methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
+
+  - name: svc-financeiro
+    host: upstream-financeiro
+    port: 80
+    protocol: http
+    routes:
+      - name: r-financeiro
+        paths: ["/financeiro"]
+        strip_path: true
+        methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
+
+  - name: svc-projetos
+    host: upstream-projetos
+    port: 80
+    protocol: http
+    routes:
+      - name: r-projetos
+        paths: ["/projetos"]
+        strip_path: true
+        methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
+
+plugins:
+  - name: cors
+    config:
+      origins:
+        - "http://localhost:3000"
+        - "http://127.0.0.1:3000"
+        - "https://seu-front.com"   # troque pelo seu domínio real (ou remova)
+      methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
+      headers: ["Authorization","Content-Type","Accept","X-Requested-With"]
+      credentials: true
+      max_age: 3600
+
+  - name: rate-limiting
+    config:
+      minute: 900
+      policy: local
+
