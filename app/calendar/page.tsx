@@ -210,10 +210,10 @@ export default function Calendar() {
     const futureEvents = allEvents
       .filter(event => {
         if (!event.date) return false;
-        const eventDate = new Date(event.date + 'T00:00:00');
+        const eventDate = new Date(event.date);
         if (isNaN(eventDate.getTime())) return false;
         
-        // Comparar apenas a data, ignorando horário para eventos do dia atual
+        // Comparar apenas a data, ignorando horário
         const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
         return eventDay >= today;
       })

@@ -18,9 +18,10 @@ export class TaskService {
       title,
       description,
       projectId,
-      assignedToId,
+      assignedToId: assignedToId || null,
       createdById,
-      deadline: deadline ? new Date(deadline) : undefined
+      deadline: deadline ? new Date(deadline) : undefined,
+      priority: 'MEDIUM'
     });
   }
 

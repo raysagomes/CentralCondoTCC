@@ -4,10 +4,10 @@ import { hashPassword, generateToken } from '../../../../src/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password } = await request.json();
+    const { name, email, password, securityWord } = await request.json();
 
-    if (!name || !email || !password) {
-      return NextResponse.json({ error: 'Nome, email e senha são obrigatórios' }, { status: 400 });
+    if (!name || !email || !password || !securityWord) {
+      return NextResponse.json({ error: 'Nome, email, senha e palavra de segurança são obrigatórios' }, { status: 400 });
     }
 
     if (password.length < 6) {
@@ -23,13 +23,15 @@ export async function POST(request: NextRequest) {
     }
 
     const hashedPassword = await hashPassword(password);
+    const hashedSecurityWord = await hashPassword(securityWord);
 
     const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        accountType: 'COMPANY'
+        securityWord: hashedSecurityWord,
+        accountType: 'ENTERPRISE'
       }
     });
 

@@ -4,7 +4,7 @@ import { prisma } from '../../../../src/lib/prisma';
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    const token = request.headers.get('authorization')?.replace('Bearer ', '') || request.cookies.get('token')?.value;
     if (!token) {
       return NextResponse.json({ error: 'Token não fornecido' }, { status: 401 });
     }

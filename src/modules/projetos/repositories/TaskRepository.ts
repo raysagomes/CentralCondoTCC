@@ -1,4 +1,4 @@
-import { prisma } from '@/shared';
+import { prisma } from '../../../lib/prisma';
 
 export interface ITaskRepository {
   create(data: any): Promise<any>;
@@ -10,8 +10,9 @@ export interface ITaskRepository {
 
 export class TaskRepository implements ITaskRepository {
   async create(data: any): Promise<any> {
-    return prisma.task.create({
-      data,
+    const task = await prisma.task.create({ data });
+    return prisma.task.findUnique({
+      where: { id: task.id },
       include: {
         assignedTo: true,
         createdBy: true
@@ -44,10 +45,13 @@ export class TaskRepository implements ITaskRepository {
   async findPendingByOwnerId(ownerId: string): Promise<any[]> {
     return prisma.task.findMany({
       where: {
-        project: { ownerId },
+        OR: [
+          { project: { ownerId } },
+          { assignedToId: ownerId }
+        ],
         status: { in: ['PENDING', 'IN_PROGRESS'] }
       },
-      include: { project: true, assignedTo: true },
+      include: { project: true, assignedTo: true, createdBy: true },
       orderBy: { createdAt: 'desc' },
       take: 5
     });

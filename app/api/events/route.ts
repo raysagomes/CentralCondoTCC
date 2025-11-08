@@ -14,25 +14,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    // Buscar eventos dos projetos que o usuário tem acesso
-    const userProjects = await prisma.project.findMany({
-      where: {
+    // Buscar eventos do usuário logado
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    
+    let whereClause;
+    if (user?.accountType === 'ENTERPRISE') {
+      // ENTERPRISE vê todos os eventos da empresa
+      whereClause = {
         OR: [
           { ownerId: decoded.userId },
-          { members: { some: { userId: decoded.userId } } }
+          { enterpriseId: decoded.userId }
         ]
-      },
-      select: { id: true }
-    });
-
-    const projectIds = userProjects.map(p => p.id);
-
+      };
+    } else {
+      // USER/ADM vê apenas seus próprios eventos
+      whereClause = { ownerId: decoded.userId };
+    }
+    
     const events = await prisma.event.findMany({
-      where: {
-        OR: [
-          { projectId: { in: projectIds } },
-          { projectId: null } // Eventos globais
-        ]
+      where: whereClause,
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
       },
       orderBy: { date: 'asc' }
     });
@@ -58,15 +65,18 @@ export async function POST(request: NextRequest) {
 
     const { title, description, date, time, projectId } = await request.json();
 
-    // Criar data com timezone de Fortaleza
-    const eventDate = new Date(date + 'T' + (time || '00:00') + ':00-03:00');
+    // Criar data usando UTC para evitar problemas de fuso horário
+    const eventDate = new Date(date + 'T12:00:00.000Z');
+    
     const event = await prisma.event.create({
       data: {
         title,
         description,
         date: eventDate,
         time,
-        projectId: projectId || null
+        projectId: projectId || null,
+        ownerId: decoded.userId,
+        enterpriseId: decoded.userId
       }
     });
 

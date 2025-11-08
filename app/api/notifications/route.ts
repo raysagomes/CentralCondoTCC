@@ -3,14 +3,21 @@ import { prisma } from '../../../src/lib/prisma';
 import { verifyToken } from '../../../src/lib/auth';
 
 export async function GET(request: NextRequest) {
+  console.log('=== API NOTIFICATIONS GET ===');
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    console.log('Token presente:', !!token);
+    
     if (!token) {
+      console.log('Erro: Token não fornecido');
       return NextResponse.json({ error: 'Token não fornecido' }, { status: 401 });
     }
 
     const decoded = verifyToken(token);
+    console.log('Token válido:', !!decoded);
+    
     if (!decoded) {
+      console.log('Erro: Token inválido');
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
@@ -154,49 +161,66 @@ async function checkEventNotifications(userId: string, enterpriseId: string, set
 async function checkTaskNotifications(userId: string, settings: any) {
   if (!settings.taskNotifications) return;
 
-  const days = settings.taskDays14 ? 14 : 7;
   const now = new Date();
-  const futureDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+  const futureDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
+  // Buscar tarefas atribuídas ao usuário
   const assignedTasks = await prisma.task.findMany({
     where: {
       assignedToId: userId,
       status: {
         in: ['PENDING', 'IN_PROGRESS']
       },
-      finishedAt: {
-        gte: now,
+      deadline: {
+        gte: today,
         lte: futureDate
       }
     }
   });
 
   for (const task of assignedTasks) {
-    if (!task.finishedAt) continue;
+    if (!task.deadline) continue;
 
+    const taskDate = new Date(task.deadline.getFullYear(), task.deadline.getMonth(), task.deadline.getDate());
+    const daysUntilDue = Math.ceil((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Verificar se já existe notificação para esta tarefa hoje
     const existingNotification = await prisma.notification.findFirst({
       where: {
-        type: 'ALERT',
-        title: 'Tarefa Próxima do Prazo',
-        message: { contains: task.title },
+        taskId: task.id,
         userId: userId,
         createdAt: {
-          gte: new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          gte: today
         }
       }
     });
 
     if (!existingNotification) {
-      const daysUntilDue = Math.ceil((task.finishedAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      let title, message;
       
-      await prisma.notification.create({
-        data: {
-          title: 'Tarefa Próxima do Prazo',
-          message: `A tarefa "${task.title}" vence em ${daysUntilDue} dia(s)`,
-          type: 'ALERT',
-          userId: userId
-        }
-      });
+      if (daysUntilDue === 0) {
+        // Tarefa vence hoje
+        title = 'Tarefa Vence Hoje';
+        message = `A tarefa "${task.title}" vence hoje!`;
+      } else if (daysUntilDue <= 7) {
+        // Tarefa vence em alguns dias
+        title = 'Tarefa Próxima do Prazo';
+        message = `A tarefa "${task.title}" vence em ${daysUntilDue} dia(s)`;
+      }
+      
+      if (title && message) {
+        await prisma.notification.create({
+          data: {
+            title,
+            message,
+            type: 'ALERT',
+            userId: userId,
+            taskId: task.id
+          }
+        });
+      }
     }
   }
 }

@@ -17,6 +17,8 @@ export default function Members() {
   const [showModal, setShowModal] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
   const [formData, setFormData] = useState({ name: '', email: '', accountType: 'USER' });
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [newMemberData, setNewMemberData] = useState<any>(null);
 
   const fetchMembers = async () => {
     try {
@@ -52,6 +54,14 @@ export default function Members() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        
+        if (!editingMember && result.temporaryPassword) {
+          // Novo membro criado - mostrar senha temporária
+          setNewMemberData(result);
+          setShowPasswordModal(true);
+        }
+        
         fetchMembers();
         setShowModal(false);
         setEditingMember(null);
@@ -381,6 +391,46 @@ export default function Members() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {showPasswordModal && newMemberData && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-4 text-center`}>
+                Membro Criado com Sucesso!
+              </h3>
+              <div className="space-y-4">
+                <div className={`${theme.secondaryBg} border ${theme.border} rounded-lg p-4`}>
+                  <p className={`text-sm ${theme.textSecondary} mb-2`}>Nome:</p>
+                  <p className={`font-medium ${theme.text}`}>{newMemberData.name}</p>
+                </div>
+                <div className={`${theme.secondaryBg} border ${theme.border} rounded-lg p-4`}>
+                  <p className={`text-sm ${theme.textSecondary} mb-2`}>Email:</p>
+                  <p className={`font-medium ${theme.text}`}>{newMemberData.email}</p>
+                </div>
+                <div className={`bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4`}>
+                  <p className={`text-sm text-yellow-600 mb-2 font-medium`}>Senha Temporária:</p>
+                  <p className={`font-bold text-lg text-yellow-700 bg-yellow-100 px-3 py-2 rounded text-center`}>
+                    temp123
+                  </p>
+                  <p className={`text-xs text-yellow-600 mt-2`}>
+                    ⚠️ Anote esta senha! O usuário deve alterá-la no primeiro login.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setNewMemberData(null);
+                  }}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Entendi
+                </button>
+              </div>
             </div>
           </div>
         )}

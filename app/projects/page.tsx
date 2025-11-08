@@ -33,11 +33,13 @@ export default function Projects() {
   const itemsPerPage = 10;
   const [showEditProjectModal, setShowEditProjectModal] = useState(false);
   const [editingProject, setEditingProject] = useState({ name: '', description: '', memberIds: [] });
+  const [taskFilter, setTaskFilter] = useState('all');
+  const [taskSearch, setTaskSearch] = useState('');
 
   const fetchMembers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/members', {
+      const response = await fetch('/api/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -123,11 +125,39 @@ export default function Projects() {
     fetchMembers();
   }, []);
 
+  // Reset da página quando filtros mudarem
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [taskFilter, taskSearch]);
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/auth');
+    } else if (isAuthenticated && projects.length > 0) {
+      // Verificar se há parâmetros na URL para navegar automaticamente
+      const urlParams = new URLSearchParams(window.location.search);
+      const projectId = urlParams.get('projectId');
+      const taskId = urlParams.get('taskId');
+      
+      if (projectId) {
+        const project = projects.find(p => p.id === projectId);
+        if (project) {
+          setSelectedProject(project);
+          // Se há taskId, abrir modal de comentários da tarefa
+          if (taskId) {
+            const task = project.tasks?.find(t => t.id === taskId);
+            if (task) {
+              setSelectedTaskForComments(task);
+              setShowCommentsModal(true);
+              fetchComments(task.id);
+            }
+          }
+          // Limpar parâmetros da URL
+          window.history.replaceState({}, '', '/projects');
+        }
+      }
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, router, projects]);
 
   if (authLoading || projectsLoading) {
     return (
@@ -147,6 +177,9 @@ export default function Projects() {
     if (result.success) {
       setShowCreateModal(false);
       setNewProject({ name: '', description: '' });
+      if (result.project) {
+        setSelectedProject(result.project);
+      }
     }
   };
 
@@ -339,74 +372,317 @@ export default function Projects() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Barra de progresso do projeto */}
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <span className={`text-sm font-medium ${theme.text}`}>Progresso do Projeto</span>
+                  <span className={`text-sm font-bold ${
+                    calculateProgress(selectedProject.tasks) === 100 ? 'text-green-400' : 'text-purple-400'
+                  }`}>
+                    {calculateProgress(selectedProject.tasks)}%
+                  </span>
+                </div>
+                <div className={`w-full ${theme.secondaryBg} rounded-full h-4 mb-3`}>
+                  <div 
+                    className={`h-4 rounded-full transition-all duration-700 ${
+                      calculateProgress(selectedProject.tasks) === 100 ? 'bg-green-500' : 'bg-purple-500'
+                    }`} 
+                    style={{width: `${calculateProgress(selectedProject.tasks)}%`}}
+                  ></div>
+                </div>
+                
+                {/* Estatísticas rápidas */}
+                <div className="grid grid-cols-4 gap-3 text-center">
+                  <div className={`p-3 ${theme.secondaryBg} rounded-lg`}>
+                    <div className="text-lg font-bold text-yellow-400">
+                      {selectedProject.tasks?.filter(t => t.status === 'PENDING').length || 0}
+                    </div>
+                    <div className={`text-xs ${theme.textSecondary}`}>Pendentes</div>
+                  </div>
+                  <div className={`p-3 ${theme.secondaryBg} rounded-lg`}>
+                    <div className="text-lg font-bold text-blue-400">
+                      {selectedProject.tasks?.filter(t => t.status === 'IN_PROGRESS').length || 0}
+                    </div>
+                    <div className={`text-xs ${theme.textSecondary}`}>Em Progresso</div>
+                  </div>
+                  <div className={`p-3 ${theme.secondaryBg} rounded-lg`}>
+                    <div className="text-lg font-bold text-green-400">
+                      {selectedProject.tasks?.filter(t => t.status === 'COMPLETED').length || 0}
+                    </div>
+                    <div className={`text-xs ${theme.textSecondary}`}>Concluídas</div>
+                  </div>
+                  <div className={`p-3 ${theme.secondaryBg} rounded-lg`}>
+                    <div className="text-lg font-bold text-purple-400">
+                      {selectedProject.tasks?.length || 0}
+                    </div>
+                    <div className={`text-xs ${theme.textSecondary}`}>Total</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filtros e busca */}
+              <div className="mb-6 flex flex-wrap gap-4 items-center">
+                <div className="flex items-center space-x-2">
+                  <label className={`text-sm font-medium ${theme.textSecondary}`}>Filtrar:</label>
+                  <select
+                    value={taskFilter}
+                    onChange={(e) => setTaskFilter(e.target.value)}
+                    className={`px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text} text-sm`}
+                  >
+                    <option value="all">Todas as tarefas</option>
+                    <option value="PENDING">Pendentes</option>
+                    <option value="IN_PROGRESS">Em Progresso</option>
+                    <option value="COMPLETED">Concluídas</option>
+                    <option value="overdue">Atrasadas</option>
+                    <option value="due_soon">Urgentes</option>
+                    <option value="my_tasks">Minhas Tarefas</option>
+                  </select>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <label className={`text-sm font-medium ${theme.textSecondary}`}>Buscar:</label>
+                  <input
+                    type="text"
+                    value={taskSearch}
+                    onChange={(e) => setTaskSearch(e.target.value)}
+                    placeholder="Digite o nome da tarefa..."
+                    className={`px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text} text-sm`}
+                  />
+                </div>
+                
+                {(taskFilter !== 'all' || taskSearch) && (
+                  <button
+                    onClick={() => {
+                      setTaskFilter('all');
+                      setTaskSearch('');
+                    }}
+                    className="text-sm text-blue-400 hover:text-blue-300 px-3 py-2 rounded-lg hover:bg-blue-500/20 transition-colors"
+                  >
+                    Limpar Filtros
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {(selectedProject.tasks || [])
+                  .filter(task => {
+                    // Filtro por status
+                    if (taskFilter === 'all') return true;
+                    if (taskFilter === 'overdue') {
+                      return task.deadline && new Date(task.deadline) < new Date() && task.status !== 'COMPLETED';
+                    }
+                    if (taskFilter === 'due_soon') {
+                      return task.deadline && new Date(task.deadline) <= new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) && task.status !== 'COMPLETED';
+                    }
+                    if (taskFilter === 'my_tasks') {
+                      return task.assignedTo?.id === user?.id;
+                    }
+                    return task.status === taskFilter;
+                  })
+                  .filter(task => {
+                    // Filtro por busca
+                    if (!taskSearch) return true;
+                    return task.title.toLowerCase().includes(taskSearch.toLowerCase()) ||
+                           task.description?.toLowerCase().includes(taskSearch.toLowerCase()) ||
+                           task.assignedTo?.name.toLowerCase().includes(taskSearch.toLowerCase());
+                  })
                   .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                  .map((task: any) => (
-                  <div key={task.id} className={`${theme.secondaryBg} border ${theme.border} rounded-lg p-4 hover:border-blue-500/50 transition-all duration-200 cursor-pointer`}
-                       onClick={() => handleShowComments(task)}>
-                    <div className="flex justify-between items-start mb-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
-                        {task.status === 'PENDING' ? 'Pendente' : task.status === 'IN_PROGRESS' ? 'Em Progresso' : 'Concluída'}
-                      </span>
-                      {((['ENTERPRISE', 'ADM'].includes(user?.accountType || '')) || 
-                        (selectedProject?.members?.some((m: any) => m.userId === user?.id))) && (
-                        <div className="flex space-x-1">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleEditTask(task); }}
-                            className="text-blue-400 hover:text-blue-300 text-xs p-1 rounded hover:bg-blue-500/20 transition-all duration-200"
-                          >
-                            <FaEdit />
-                          </button>
-                          {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
-                              className="text-red-400 hover:text-red-300 text-xs p-1 rounded hover:bg-red-500/20 transition-all duration-200"
-                            >
-                              <FaTrash />
-                            </button>
+                  .map((task: any) => {
+                    const isOverdue = task.deadline && new Date(task.deadline) < new Date() && task.status !== 'COMPLETED';
+                    const isDueSoon = task.deadline && new Date(task.deadline) <= new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) && task.status !== 'COMPLETED';
+                    
+                    return (
+                      <div key={task.id} className={`${theme.secondaryBg} border rounded-lg p-4 hover:shadow-lg transition-all duration-200 cursor-pointer ${
+                        isOverdue ? 'border-red-500/50 bg-red-500/5' : 
+                        isDueSoon ? 'border-yellow-500/50 bg-yellow-500/5' : 
+                        theme.border
+                      } hover:border-blue-500/50`}
+                           onClick={() => handleShowComments(task)}>
+                        
+                        {/* Cabeçalho da tarefa */}
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+                              {task.status === 'PENDING' ? '🕰️ Pendente' : 
+                               task.status === 'IN_PROGRESS' ? '⚡ Em Progresso' : 
+                               '✓ Concluída'}
+                            </span>
+                            {isOverdue && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
+                                ⚠️ Atrasada
+                              </span>
+                            )}
+                            {isDueSoon && !isOverdue && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400">
+                                ⏰ Urgente
+                              </span>
+                            )}
+                          </div>
+                          
+                          {((['ENTERPRISE', 'ADM'].includes(user?.accountType || '')) || 
+                            (selectedProject?.members?.some((m: any) => m.userId === user?.id))) && (
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleEditTask(task); }}
+                                className="text-blue-400 hover:text-blue-300 text-xs p-1 rounded hover:bg-blue-500/20 transition-all duration-200"
+                                title="Editar tarefa"
+                              >
+                                <FaEdit />
+                              </button>
+                              {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
+                                  className="text-red-400 hover:text-red-300 text-xs p-1 rounded hover:bg-red-500/20 transition-all duration-200"
+                                  title="Deletar tarefa"
+                                >
+                                  <FaTrash />
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                    <h3 className={`font-semibold ${theme.text} mb-2 line-clamp-2`}>{task.title}</h3>
-                    <div className={`text-xs ${theme.textSecondary} space-y-1`}>
-                      <div className="flex items-center"><FaUser className="mr-1" /> {task.assignedTo?.name || 'Não atribuído'}</div>
-                      <div className="flex items-center"><FaCalendarAlt className="mr-1" /> {new Date(task.createdAt).toLocaleDateString('pt-BR')}</div>
-                      {task.deadline && <div className="flex items-center text-orange-400"><FaCalendarAlt className="mr-1" /> Prazo: {new Date(task.deadline).toLocaleDateString('pt-BR')}</div>}
-                      <div className="flex items-center"><FaUserTie className="mr-1" /> {task.createdBy?.name}</div>
-                    </div>
-                  </div>
-                ))}
+                        
+                        {/* Título da tarefa */}
+                        <h3 className={`font-semibold ${theme.text} mb-3 line-clamp-2 text-sm`}>{task.title}</h3>
+                        
+                        {/* Descrição (se houver) */}
+                        {task.description && (
+                          <p className={`text-xs ${theme.textSecondary} mb-3 line-clamp-2`}>
+                            {task.description}
+                          </p>
+                        )}
+                        
+                        {/* Informações da tarefa */}
+                        <div className={`text-xs ${theme.textSecondary} space-y-2`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <FaUser className="mr-1" /> 
+                              <span className={task.assignedTo ? theme.text : 'text-orange-400'}>
+                                {task.assignedTo?.name || 'Não atribuído'}
+                              </span>
+                            </div>
+                            {task.assignedTo && (
+                              <span className={`px-2 py-0.5 rounded text-xs ${
+                                task.assignedTo.accountType === 'ENTERPRISE' ? 'bg-purple-500/20 text-purple-400' :
+                                task.assignedTo.accountType === 'ADM' ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-green-500/20 text-green-400'
+                              }`}>
+                                {task.assignedTo.accountType === 'ENTERPRISE' ? 'Enterprise' :
+                                 task.assignedTo.accountType === 'ADM' ? 'Admin' : 'User'}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center">
+                            <FaCalendarAlt className="mr-1" /> 
+                            Criada: {new Date(task.createdAt).toLocaleDateString('pt-BR')}
+                          </div>
+                          
+                          {task.deadline && (
+                            <div className={`flex items-center ${
+                              isOverdue ? 'text-red-400' : isDueSoon ? 'text-yellow-400' : theme.textSecondary
+                            }`}>
+                              <FaCalendarAlt className="mr-1" /> 
+                              Prazo: {new Date(task.deadline).toLocaleDateString('pt-BR')}
+                              {isOverdue && ' (Atrasada)'}
+                              {isDueSoon && !isOverdue && ' (Urgente)'}
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center">
+                            <FaUserTie className="mr-1" /> 
+                            Criada por: {task.createdBy?.name}
+                          </div>
+                        </div>
+                        
+                        {/* Botões de ação rápida */}
+                        <div className="mt-3 pt-3 border-t border-gray-600/20">
+                          <div className="flex justify-between items-center">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleShowComments(task); }}
+                              className={`text-xs px-3 py-1 rounded-full ${theme.secondaryBg} ${theme.textSecondary} hover:${theme.text} transition-colors flex items-center`}
+                            >
+                              <FaComments className="mr-1" /> Ver Detalhes
+                            </button>
+                            
+                            {task.status !== 'COMPLETED' && (task.assignedTo?.id === user?.id || ['ENTERPRISE', 'ADM'].includes(user?.accountType || '')) && (
+                              <select
+                                value={task.status}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleStatusChange(task.id, e.target.value);
+                                }}
+                                className={`text-xs px-2 py-1 rounded ${theme.secondaryBg} border ${theme.border} ${theme.text}`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <option value="PENDING">Pendente</option>
+                                <option value="IN_PROGRESS">Em Progresso</option>
+                                <option value="COMPLETED">Concluir</option>
+                              </select>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
               
-              {(selectedProject.tasks?.length || 0) > itemsPerPage && (
-                <div className="flex justify-center items-center space-x-4 mt-6">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
-                      currentPage === 1 
-                        ? `${theme.textSecondary} cursor-not-allowed` 
-                        : `${theme.text} ${theme.secondaryBg} border ${theme.border} hover:${theme.hover}`
-                    }`}
-                  >
-                    Anterior
-                  </button>
-                  
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil((selectedProject.tasks?.length || 0) / itemsPerPage)))}
-                    disabled={currentPage === Math.ceil((selectedProject.tasks?.length || 0) / itemsPerPage)}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
-                      currentPage === Math.ceil((selectedProject.tasks?.length || 0) / itemsPerPage)
-                        ? `${theme.textSecondary} cursor-not-allowed`
-                        : `${theme.text} ${theme.secondaryBg} border ${theme.border} hover:${theme.hover}`
-                    }`}
-                  >
-                    Próxima
-                  </button>
-                </div>
-              )}
+              {(() => {
+                const filteredTasks = (selectedProject.tasks || [])
+                  .filter(task => {
+                    if (taskFilter === 'all') return true;
+                    if (taskFilter === 'overdue') {
+                      return task.deadline && new Date(task.deadline) < new Date() && task.status !== 'COMPLETED';
+                    }
+                    if (taskFilter === 'due_soon') {
+                      return task.deadline && new Date(task.deadline) <= new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) && task.status !== 'COMPLETED';
+                    }
+                    if (taskFilter === 'my_tasks') {
+                      return task.assignedTo?.id === user?.id;
+                    }
+                    return task.status === taskFilter;
+                  })
+                  .filter(task => {
+                    if (!taskSearch) return true;
+                    return task.title.toLowerCase().includes(taskSearch.toLowerCase()) ||
+                           task.description?.toLowerCase().includes(taskSearch.toLowerCase()) ||
+                           task.assignedTo?.name.toLowerCase().includes(taskSearch.toLowerCase());
+                  });
+                
+                const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
+                
+                return filteredTasks.length > itemsPerPage && (
+                  <div className="flex justify-center items-center space-x-4 mt-6">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className={`px-4 py-2 rounded-lg transition-colors ${
+                        currentPage === 1 
+                          ? `${theme.textSecondary} cursor-not-allowed` 
+                          : `${theme.text} ${theme.secondaryBg} border ${theme.border} hover:${theme.hover}`
+                      }`}
+                    >
+                      Anterior
+                    </button>
+                    
+                    <span className={`text-sm ${theme.textSecondary}`}>
+                      Página {currentPage} de {totalPages} ({filteredTasks.length} tarefas)
+                    </span>
+                    
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className={`px-4 py-2 rounded-lg transition-colors ${
+                        currentPage === totalPages
+                          ? `${theme.textSecondary} cursor-not-allowed`
+                          : `${theme.text} ${theme.secondaryBg} border ${theme.border} hover:${theme.hover}`
+                      }`}
+                    >
+                      Próxima
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         ) : (
@@ -420,16 +696,58 @@ export default function Projects() {
                 <h3 className={`text-xl font-semibold ${theme.text} mb-2`}>{project.name}</h3>
                 <p className={`${theme.textSecondary} mb-4`}>{project.description}</p>
                 <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-400 mb-1">
-                    <span>Progresso</span>
-                    <span>{calculateProgress(project.tasks)}%</span>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className={theme.textSecondary}>Progresso</span>
+                    <span className={`font-semibold ${calculateProgress(project.tasks) === 100 ? 'text-green-400' : 'text-purple-400'}`}>
+                      {calculateProgress(project.tasks)}%
+                    </span>
                   </div>
-                  <div className={`w-full ${theme.secondaryBg} rounded-full h-2`}>
-                    <div className="bg-purple-500 h-2 rounded-full" style={{width: `${calculateProgress(project.tasks)}%`}}></div>
+                  <div className={`w-full ${theme.secondaryBg} rounded-full h-3 mb-3`}>
+                    <div 
+                      className={`h-3 rounded-full transition-all duration-500 ${
+                        calculateProgress(project.tasks) === 100 ? 'bg-green-500' : 'bg-purple-500'
+                      }`} 
+                      style={{width: `${calculateProgress(project.tasks)}%`}}
+                    ></div>
+                  </div>
+                  
+                  {/* Estatísticas das tarefas */}
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className={`text-center p-2 ${theme.secondaryBg} rounded`}>
+                      <div className="font-semibold text-yellow-400">
+                        {project.tasks?.filter(t => t.status === 'PENDING').length || 0}
+                      </div>
+                      <div className={theme.textSecondary}>Pendentes</div>
+                    </div>
+                    <div className={`text-center p-2 ${theme.secondaryBg} rounded`}>
+                      <div className="font-semibold text-blue-400">
+                        {project.tasks?.filter(t => t.status === 'IN_PROGRESS').length || 0}
+                      </div>
+                      <div className={theme.textSecondary}>Em Progresso</div>
+                    </div>
+                    <div className={`text-center p-2 ${theme.secondaryBg} rounded`}>
+                      <div className="font-semibold text-green-400">
+                        {project.tasks?.filter(t => t.status === 'COMPLETED').length || 0}
+                      </div>
+                      <div className={theme.textSecondary}>Concluídas</div>
+                    </div>
                   </div>
                 </div>
-                <div className={`text-sm ${theme.textSecondary}`}>
-                  {project.tasks?.length || 0} tarefas
+                
+                <div className="flex justify-between items-center">
+                  <div className={`text-sm ${theme.textSecondary}`}>
+                    {project.tasks?.length || 0} tarefas total
+                  </div>
+                  <div className={`text-xs px-2 py-1 rounded-full ${
+                    calculateProgress(project.tasks) === 100 
+                      ? 'bg-green-500/20 text-green-400' 
+                      : calculateProgress(project.tasks) > 50 
+                        ? 'bg-blue-500/20 text-blue-400'
+                        : 'bg-yellow-500/20 text-yellow-400'
+                  }`}>
+                    {calculateProgress(project.tasks) === 100 ? '✓ Completo' : 
+                     calculateProgress(project.tasks) > 50 ? '⚡ Progredindo' : '🚀 Iniciando'}
+                  </div>
                 </div>
               </div>
             ))}
@@ -527,7 +845,7 @@ export default function Projects() {
                     className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                   >
                     <option value="">Selecionar responsável</option>
-                    {projectMembers.map((member: any) => (
+                    {members.map((member: any) => (
                       <option key={member.id} value={member.id}>{member.name}</option>
                     ))}
                   </select>
@@ -596,7 +914,7 @@ export default function Projects() {
                     className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
                   >
                     <option value="">Selecionar responsável</option>
-                    {projectMembers.map((member: any) => (
+                    {members.map((member: any) => (
                       <option key={member.id} value={member.id}>{member.name}</option>
                     ))}
                   </select>
@@ -853,41 +1171,7 @@ export default function Projects() {
                     rows={3}
                   />
                 </div>
-                <div>
-                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Membros do Projeto</label>
-                  <div className={`${theme.secondaryBg} border ${theme.border} rounded-lg p-3 max-h-40 overflow-y-auto`}>
-                    {members.filter((member: any) => 
-                      member.id !== selectedProject?.ownerId && 
-                      member.accountType !== 'ENTERPRISE'
-                    ).map((member: any) => (
-                      <label key={member.id} className="flex items-center space-x-2 py-1">
-                        <input
-                          type="checkbox"
-                          checked={editingProject.memberIds.includes(member.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setEditingProject({
-                                ...editingProject,
-                                memberIds: [...editingProject.memberIds, member.id]
-                              });
-                            } else {
-                              setEditingProject({
-                                ...editingProject,
-                                memberIds: editingProject.memberIds.filter(id => id !== member.id)
-                              });
-                            }
-                          }}
-                          className="rounded"
-                        />
-                        <span className={`text-sm ${theme.text}`}>{member.name}</span>
-                        <span className={`text-xs ${theme.textSecondary}`}>({member.accountType})</span>
-                      </label>
-                    ))}
-                  </div>
-                  <p className={`text-xs ${theme.textSecondary} mt-1`}>
-                    Selecione os membros que terão acesso a este projeto
-                  </p>
-                </div>
+
                 <div className="flex justify-end space-x-2">
                   <button
                     type="button"

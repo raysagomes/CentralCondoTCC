@@ -53,8 +53,9 @@ export const useProjects = () => {
       });
 
       if (response.ok) {
+        const newProject = await response.json();
         await fetchProjects();
-        return { success: true };
+        return { success: true, project: newProject };
       } else {
         const data = await response.json();
         return { success: false, error: data.error };
@@ -77,12 +78,7 @@ export const useProjects = () => {
       });
 
       if (response.ok) {
-        const newTask = await response.json();
-        setProjects(prev => prev.map(project => 
-          project.id === projectId 
-            ? { ...project, tasks: [...project.tasks, newTask] }
-            : project
-        ));
+        await fetchProjects();
         return { success: true };
       } else {
         const data = await response.json();
