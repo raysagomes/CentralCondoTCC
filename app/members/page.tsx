@@ -166,7 +166,7 @@ export default function Members() {
     }
   };
 
-  const displayMembers = members;
+  const displayMembers = Array.isArray(members) ? members : [];
 
   return (
     <div className={`min-h-screen ${theme.bg}`}>
@@ -217,7 +217,7 @@ export default function Members() {
                 </tr>
               </thead>
               <tbody className={`${theme.cardBg} divide-y ${theme.border}`}>
-                {displayMembers.map((member) => (
+                {displayMembers.length > 0 ? displayMembers.map((member) => (
                   <tr key={member.id} className={`${theme.hover} transition-colors`}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -269,7 +269,13 @@ export default function Members() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan={5} className={`px-6 py-12 text-center ${theme.textSecondary}`}>
+                      Nenhum membro encontrado
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

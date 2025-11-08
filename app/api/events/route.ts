@@ -14,7 +14,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    // Buscar o usuário para obter o enterpriseId
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId }
     });
@@ -23,15 +22,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
     }
 
-    // Determinar o enterpriseId
-    const enterpriseId = user.accountType === 'ENTERPRISE' ? user.id : user.enterpriseId;
-    
-    if (!enterpriseId) {
-      return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 400 });
+    let whereClause = {};
+    if (user.accountType === 'COMPANY') {
+      // COMPANY vê eventos de todos os projetos que possui
+      whereClause = {
+        OR: [
+          { project: { ownerId: decoded.userId } },
+          { projectId: null } // Eventos gerais
+        ]
+      };
+    } else {
+      // USER vê eventos dos projetos em que participa
+      whereClause = {
+        OR: [
+          { project: { members: { some: { userId: decoded.userId } } } },
+          { projectId: null } // Eventos gerais
+        ]
+      };
     }
 
     const events = await prisma.event.findMany({
-      where: { enterpriseId },
+      where: whereClause,
+      include: { project: { select: { name: true } } },
       orderBy: { date: 'asc' }
     });
 
@@ -54,22 +66,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const { title, description, date, time } = await request.json();
+    const { title, description, date, time, projectId } = await request.json();
 
-    // Buscar o usuário para obter o enterpriseId
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId }
     });
 
-    if (!user) {
-      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
-    }
-
-    // Determinar o enterpriseId
-    const enterpriseId = user.accountType === 'ENTERPRISE' ? user.id : user.enterpriseId;
-    
-    if (!enterpriseId) {
-      return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 400 });
+    if (!user || user.accountType !== 'COMPANY') {
+      return NextResponse.json({ error: 'Apenas COMPANY pode criar eventos' }, { status: 403 });
     }
 
     const event = await prisma.event.create({
@@ -78,7 +82,7 @@ export async function POST(request: NextRequest) {
         description,
         date: new Date(date),
         time,
-        enterpriseId
+        projectId: projectId || null
       }
     });
 
