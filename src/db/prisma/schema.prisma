@@ -122,9 +122,12 @@ model Comment {
 model Payment {
   id        String   @id @default(uuid())
   title     String
+  amount    Float
   dueDate   DateTime
+  barcode   String?
   link      String?
   paid      Boolean  @default(false)
+  paidDate  DateTime?
   createdAt DateTime @default(now())
   ownerId   String
   owner     User     @relation("UserPayments", fields: [ownerId], references: [id])

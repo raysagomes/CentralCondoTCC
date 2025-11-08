@@ -15,11 +15,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     const notification = await prisma.notification.update({
-      where: { 
+      where: {
         id: params.id,
         userId: decoded.userId
       },
-      data: { seen: true }
+      data: { status: 'READ' }
     });
 
     return NextResponse.json(notification);

@@ -25,13 +25,26 @@ export async function POST(request: NextRequest) {
       where: { id: decoded.userId }
     });
 
-    if (!user || !['ENTERPRISE', 'ADM'].includes(user.accountType)) {
-      return NextResponse.json({ error: 'Apenas ENTERPRISE e ADM podem criar tarefas' }, { status: 403 });
+    if (!user) {
+      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
     }
 
-    const { title, description, projectId, assignedToId } = await request.json();
+    const { title, description, projectId, assignedToId, deadline } = await request.json();
 
-    const task = await taskService.createTask(title, description, projectId, assignedToId, decoded.userId);
+    // Verificar se o usuário pode criar tarefas (ENTERPRISE/ADM ou membro do projeto)
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: { members: true }
+    });
+
+    const canCreateTask = ['ENTERPRISE', 'ADM'].includes(user.accountType) || 
+                         project?.members.some(m => m.userId === decoded.userId);
+
+    if (!canCreateTask) {
+      return NextResponse.json({ error: 'Sem permissão para criar tarefas neste projeto' }, { status: 403 });
+    }
+
+    const task = await taskService.createTask(title, description, projectId, assignedToId, decoded.userId, deadline);
 
     return NextResponse.json(task, { status: 201 });
   } catch (error) {

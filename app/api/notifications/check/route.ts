@@ -1,54 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '../../../src/lib/prisma';
-import { verifyToken } from '../../../src/lib/auth';
+import { prisma } from '../../../../src/lib/prisma';
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Token não fornecido' }, { status: 401 });
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
-    }
-
-    // Verificar e criar todas as notificações
-    await checkAllNotifications(decoded.userId);
-
-    const notifications = await prisma.notification.findMany({
-      where: { userId: decoded.userId },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    return NextResponse.json(notifications);
+    await checkAndCreateAllNotifications();
+    return NextResponse.json({ success: true, message: 'Notificações verificadas e criadas' });
   } catch (error) {
-    console.error('Erro ao buscar notificações:', error);
+    console.error('Erro ao verificar notificações:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }
 
-async function checkAllNotifications(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId }
+async function checkAndCreateAllNotifications() {
+  const users = await prisma.user.findMany({
+    where: {
+      OR: [
+        { accountType: 'ENTERPRISE' },
+        { enterpriseId: { not: null } }
+      ]
+    }
   });
-  
-  if (!user) return;
-  
-  const enterpriseId = user.accountType === 'ENTERPRISE' ? user.id : user.enterpriseId;
-  if (!enterpriseId) return;
-  
-  const settings = getNotificationSettings();
-  
-  await Promise.all([
-    checkPaymentNotifications(userId, enterpriseId, settings),
-    checkEventNotifications(userId, enterpriseId, settings),
-    checkTaskNotifications(userId, settings)
-  ]);
+
+  for (const user of users) {
+    const enterpriseId = user.accountType === 'ENTERPRISE' ? user.id : user.enterpriseId;
+    if (!enterpriseId) continue;
+
+    // Buscar configurações do usuário (padrão: 7 dias)
+    const settings = await getNotificationSettings(user.id);
+    
+    await Promise.all([
+      checkPaymentNotifications(user.id, enterpriseId, settings),
+      checkEventNotifications(user.id, enterpriseId, settings),
+      checkTaskNotifications(user.id, settings)
+    ]);
+  }
 }
 
-function getNotificationSettings() {
+async function getNotificationSettings(userId: string) {
+  // Configurações padrão (7 dias)
   return {
     paymentNotifications: true,
     paymentDays14: false,
@@ -86,7 +75,7 @@ async function checkPaymentNotifications(userId: string, enterpriseId: string, s
         paymentId: payment.id,
         userId: userId,
         createdAt: {
-          gte: new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) // Últimas 24h
         }
       }
     });
@@ -130,7 +119,7 @@ async function checkEventNotifications(userId: string, enterpriseId: string, set
         eventId: event.id,
         userId: userId,
         createdAt: {
-          gte: new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) // Últimas 24h
         }
       }
     });
@@ -158,6 +147,7 @@ async function checkTaskNotifications(userId: string, settings: any) {
   const now = new Date();
   const futureDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
+  // Buscar apenas tarefas atribuídas ao usuário
   const assignedTasks = await prisma.task.findMany({
     where: {
       assignedToId: userId,
@@ -181,13 +171,13 @@ async function checkTaskNotifications(userId: string, settings: any) {
         message: { contains: task.title },
         userId: userId,
         createdAt: {
-          gte: new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) // Últimas 24h
         }
       }
     });
 
     if (!existingNotification) {
-      const daysUntilDue = Math.ceil((task.finishedAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const daysUntilDue = Math.ceil((task.finishedAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 1000));
       
       await prisma.notification.create({
         data: {
@@ -198,33 +188,5 @@ async function checkTaskNotifications(userId: string, settings: any) {
         }
       });
     }
-  }
-}
-
-
-
-export async function PATCH(request: NextRequest) {
-  try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Token não fornecido' }, { status: 401 });
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
-    }
-
-    const { notificationId } = await request.json();
-
-    await prisma.notification.update({
-      where: { id: notificationId },
-      data: { status: 'READ' }
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Erro ao marcar notificação como lida:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }

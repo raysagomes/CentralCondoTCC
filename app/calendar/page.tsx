@@ -49,7 +49,8 @@ export default function Calendar() {
             title: event.title,
             type: 'event',
             time: event.time || '00:00',
-            description: event.description
+            description: event.description,
+            date: event.date
           });
         });
         setEvents(groupedEvents);
@@ -209,7 +210,7 @@ export default function Calendar() {
     const futureEvents = allEvents
       .filter(event => {
         if (!event.date) return false;
-        const eventDate = new Date(event.date);
+        const eventDate = new Date(event.date + 'T00:00:00');
         if (isNaN(eventDate.getTime())) return false;
         
         // Comparar apenas a data, ignorando horário para eventos do dia atual
@@ -217,16 +218,16 @@ export default function Calendar() {
         return eventDay >= today;
       })
       .sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
+        const dateA = new Date(a.date + 'T00:00:00');
+        const dateB = new Date(b.date + 'T00:00:00');
         
         if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0;
         
         const [hoursA, minutesA] = (a.time || '00:00').split(':');
         const [hoursB, minutesB] = (b.time || '00:00').split(':');
         
-        const dateTimeA = new Date(a.date);
-        const dateTimeB = new Date(b.date);
+        const dateTimeA = new Date(a.date + 'T00:00:00');
+        const dateTimeB = new Date(b.date + 'T00:00:00');
         dateTimeA.setHours(parseInt(hoursA), parseInt(minutesA), 0, 0);
         dateTimeB.setHours(parseInt(hoursB), parseInt(minutesB), 0, 0);
         
@@ -387,9 +388,9 @@ export default function Calendar() {
                       {(() => {
                         try {
                           if (!event.date) return 'Data não definida';
-                          const date = new Date(event.date);
+                          const date = new Date(event.date + 'T00:00:00');
                           if (isNaN(date.getTime())) return 'Data inválida';
-                          return date.toLocaleDateString('pt-BR');
+                          return date.toLocaleDateString('pt-BR', { timeZone: 'America/Fortaleza' });
                         } catch {
                           return 'Data inválida';
                         }
@@ -452,9 +453,9 @@ export default function Calendar() {
                 Adicionar Evento - {(() => {
                   try {
                     if (!selectedDate) return '';
-                    const date = new Date(selectedDate);
+                    const date = new Date(selectedDate + 'T00:00:00');
                     if (isNaN(date.getTime())) return '';
-                    return date.toLocaleDateString('pt-BR');
+                    return date.toLocaleDateString('pt-BR', { timeZone: 'America/Fortaleza' });
                   } catch {
                     return '';
                   }

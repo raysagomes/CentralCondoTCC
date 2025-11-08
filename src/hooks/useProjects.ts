@@ -64,7 +64,7 @@ export const useProjects = () => {
     }
   };
 
-  const createTask = async (projectId: string, title: string, description?: string, assignedToId?: string) => {
+  const createTask = async (projectId: string, title: string, description?: string, assignedToId?: string, deadline?: string) => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch('/api/tasks', {
@@ -73,7 +73,7 @@ export const useProjects = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ title, description, projectId, assignedToId })
+        body: JSON.stringify({ title, description, projectId, assignedToId, deadline })
       });
 
       if (response.ok) {

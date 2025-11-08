@@ -14,24 +14,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    // Buscar o usuário para obter o enterpriseId
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
+    // Buscar eventos dos projetos que o usuário tem acesso
+    const userProjects = await prisma.project.findMany({
+      where: {
+        OR: [
+          { ownerId: decoded.userId },
+          { members: { some: { userId: decoded.userId } } }
+        ]
+      },
+      select: { id: true }
     });
 
-    if (!user) {
-      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
-    }
-
-    // Determinar o enterpriseId
-    const enterpriseId = user.accountType === 'ENTERPRISE' ? user.id : user.enterpriseId;
-    
-    if (!enterpriseId) {
-      return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 400 });
-    }
+    const projectIds = userProjects.map(p => p.id);
 
     const events = await prisma.event.findMany({
-      where: { enterpriseId },
+      where: {
+        OR: [
+          { projectId: { in: projectIds } },
+          { projectId: null } // Eventos globais
+        ]
+      },
       orderBy: { date: 'asc' }
     });
 
@@ -54,31 +56,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const { title, description, date, time } = await request.json();
+    const { title, description, date, time, projectId } = await request.json();
 
-    // Buscar o usuário para obter o enterpriseId
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
-    }
-
-    // Determinar o enterpriseId
-    const enterpriseId = user.accountType === 'ENTERPRISE' ? user.id : user.enterpriseId;
+    // Criar data com timezone de Fortaleza
+    const eventDate = new Date(date + 'T' + (time || '00:00') + ':00-03:00');
     
-    if (!enterpriseId) {
-      return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 400 });
-    }
-
     const event = await prisma.event.create({
       data: {
         title,
         description,
-        date: new Date(date),
+        date: eventDate,
         time,
-        enterpriseId
+        projectId: projectId || null
       }
     });
 

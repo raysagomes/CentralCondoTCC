@@ -26,6 +26,7 @@ type Payment = {
   dueDate: string;
   paid: boolean;
   paidDate?: string;
+  barcode?: string;
   link?: string;
   type?: PaymentType;
 };
@@ -56,7 +57,11 @@ export default function Payments() {
     description: '',
     amount: '',
     dueDate: '',
+    barcode: '',
+    link: '',
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const payments = {
     pending: all.filter((p) => !p.paid && new Date(p.dueDate) >= new Date()),
@@ -78,11 +83,21 @@ export default function Payments() {
     }
   };
 
-  const handleDeletePayment = async (paymentId: string) => {
-    if (confirm('Tem certeza que deseja deletar este boleto?')) {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState<Payment | null>(null);
+
+  const handleDeletePayment = (paymentId: string) => {
+    setPaymentToDelete(paymentId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (paymentToDelete) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`/api/payments/${paymentId}`, {
+        const response = await fetch(`/api/payments/${paymentToDelete}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -93,17 +108,69 @@ export default function Payments() {
         console.error('Erro ao deletar pagamento:', error);
       }
     }
+    setShowDeleteModal(false);
+    setPaymentToDelete(null);
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!newPayment.title || !newPayment.title.trim()) {
+      newErrors.title = 'Campo Título é obrigatório';
+    } else if (newPayment.title.trim().length < 3) {
+      newErrors.title = 'Campo Título deve ter pelo menos 3 caracteres';
+    }
+    
+    if (!newPayment.amount) {
+      newErrors.amount = 'Campo Valor é obrigatório';
+    } else {
+      const numValue = parseFloat(newPayment.amount);
+      if (isNaN(numValue) || numValue <= 0) {
+        newErrors.amount = 'Campo Valor deve ser maior que R$ 0,00';
+      }
+    }
+    
+    if (!newPayment.dueDate) {
+      newErrors.dueDate = 'Campo Data de Vencimento é obrigatório';
+    }
+    
+    const hasBarcode = newPayment.barcode && newPayment.barcode.trim();
+    const hasLink = newPayment.link && newPayment.link.trim();
+    
+    if (!hasBarcode && !hasLink) {
+      newErrors.barcode = 'Preencha pelo menos um: Código de Barras ou Link de Pagamento';
+      newErrors.link = 'Preencha pelo menos um: Código de Barras ou Link de Pagamento';
+    } else {
+      if (hasBarcode) {
+        const digits = newPayment.barcode.replace(/\D/g, '');
+        if (digits.length !== 47) {
+          newErrors.barcode = `Campo Código de Barras com formato incorreto. Deve ter 47 dígitos, atual: ${digits.length}`;
+        }
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setErrors({});
+    
     try {
       const token = localStorage.getItem('token');
       const paymentData = {
         title: newPayment.title,
-        description: newPayment.description,
         amount: parseFloat(newPayment.amount),
         dueDate: newPayment.dueDate,
+        barcode: newPayment.barcode || null,
+        link: newPayment.link || null,
         type: 'other' as PaymentType,
       };
 
@@ -117,24 +184,18 @@ export default function Payments() {
       });
 
       if (response.ok) {
-        await response.json();
         setShowAddModal(false);
-        setNewPayment({ title: '', description: '', amount: '', dueDate: '' });
+        setNewPayment({ title: '', description: '', amount: '', dueDate: '', barcode: '', link: '' });
+        setErrors({});
         await refetch();
       } else {
-        let errorMessage = `Erro ${response.status}`;
-        try {
-          const error = await response.json();
-          errorMessage = error.message || errorMessage;
-        } catch {
-          errorMessage = `Erro ${response.status}: ${response.statusText}`;
-        }
-        console.error('Erro na resposta:', errorMessage);
-        alert('Erro ao adicionar boleto: ' + errorMessage);
+        const errorData = await response.json();
+        setErrors({ general: errorData.error || 'Erro ao adicionar pagamento' });
       }
     } catch (error) {
-      console.error('Erro ao adicionar pagamento:', error);
-      alert('Erro ao adicionar boleto');
+      setErrors({ general: 'Erro de conexão. Tente novamente.' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -220,11 +281,11 @@ export default function Payments() {
                               {getTypeName(payment.type ?? 'other')}
                             </span>
                           </div>
-                          <div className={`text-sm ${theme.textSecondary}`}>Vencimento: {payment.dueDate}</div>
+                          <div className={`text-sm ${theme.textSecondary}`}>Vencimento: {new Date(payment.dueDate).toLocaleDateString('pt-BR', { timeZone: 'America/Fortaleza' })}</div>
                         </div>
                         <div className="text-right">
                           <div className={`text-2xl font-bold ${theme.text}`}>
-                            R$ {payment.link ? parseFloat(payment.link.split('|')[0] || '0').toFixed(2) : '0.00'}
+                            R$ {payment.amount.toFixed(2)}
                           </div>
                           <div className="flex space-x-2 mt-2">
                             <button
@@ -263,17 +324,21 @@ export default function Payments() {
                               {getTypeName(payment.type ?? 'other')}
                             </span>
                             <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
-                              ✓ Pago
+                              Pago
                             </span>
                           </div>
-                          <div className={`text-sm ${theme.textSecondary}`}>Pago em: {payment.paidDate}</div>
+                          <div className={`text-sm ${theme.textSecondary}`}>Pago em: {payment.paidDate ? new Date(payment.paidDate).toLocaleDateString('pt-BR', { timeZone: 'America/Fortaleza' }) + ' às ' + new Date(payment.paidDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Fortaleza' }) : 'N/A'}</div>
                         </div>
                         <div className="text-right">
                           <div className="text-2xl font-bold text-green-400">
-                            R$ {payment.link ? parseFloat(payment.link.split('|')[0] || '0').toFixed(2) : '0.00'}
+                            R$ {payment.amount.toFixed(2)}
                           </div>
                           <div className="flex space-x-2 mt-2">
                             <button
+                              onClick={() => {
+                                setSelectedReceipt(payment);
+                                setShowReceiptModal(true);
+                              }}
                               className={`${theme.secondaryBg} ${theme.textSecondary} px-3 py-1 rounded-lg ${theme.hover} transition-colors text-sm`}
                             >
                               Ver Comprovante
@@ -308,14 +373,14 @@ export default function Payments() {
                               {getTypeName(payment.type ?? 'other')}
                             </span>
                             <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
-                              ⚠ Atrasado
+                              Atrasado
                             </span>
                           </div>
-                          <div className="text-sm text-red-400">Venceu em: {payment.dueDate}</div>
+                          <div className="text-sm text-red-400">Venceu em: {new Date(payment.dueDate).toLocaleDateString('pt-BR', { timeZone: 'America/Fortaleza' })}</div>
                         </div>
                         <div className="text-right">
                           <div className="text-2xl font-bold text-red-400">
-                            R$ {payment.link ? parseFloat(payment.link.split('|')[0] || '0').toFixed(2) : '0.00'}
+                            R$ {payment.amount.toFixed(2)}
                           </div>
                           <div className="flex space-x-2 mt-2">
                             <button
@@ -369,7 +434,7 @@ export default function Payments() {
                   <div>
                     <p className="text-sm text-gray-400">Valor</p>
                     <p className="font-medium text-lg text-white">
-                      R$ {selectedPayment.link ? parseFloat(selectedPayment.link.split('|')[0] || '0').toFixed(2) : '0.00'}
+                      R$ {selectedPayment.amount?.toFixed(2) || '0.00'}
                     </p>
                   </div>
                   <div>
@@ -378,9 +443,15 @@ export default function Payments() {
                       {new Date(selectedPayment.dueDate).toLocaleDateString('pt-BR')}
                     </p>
                   </div>
+                  {selectedPayment.barcode && (
+                    <div>
+                      <p className="text-sm text-gray-400">Código de Barras</p>
+                      <p className="font-mono text-sm bg-[#0f1136] p-2 rounded text-gray-300">{selectedPayment.barcode}</p>
+                    </div>
+                  )}
                   {selectedPayment.link && (
                     <div>
-                      <p className="text-sm text-gray-400">Código do Boleto</p>
+                      <p className="text-sm text-gray-400">Link de Pagamento</p>
                       <p className="font-mono text-sm bg-[#0f1136] p-2 rounded text-gray-300">{selectedPayment.link}</p>
                     </div>
                   )}
@@ -407,44 +478,112 @@ export default function Payments() {
             <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
               <div className="bg-[#1a1d4f] border border-[#2a2d6f] rounded-xl p-6 w-96">
                 <h3 className="text-lg font-semibold text-white mb-4">Adicionar Boleto</h3>
+                {errors.general && (
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    {errors.general}
+                  </div>
+                )}
                 <form onSubmit={handleAddPayment} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">Título</label>
                     <input
                       type="text"
                       value={newPayment.title}
-                      onChange={(e) => setNewPayment({ ...newPayment, title: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#0f1136] border border-[#2a2d6f] rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                      onChange={(e) => {
+                        setNewPayment({ ...newPayment, title: e.target.value });
+                        if (errors.title) setErrors({ ...errors, title: '' });
+                      }}
+                      className={`w-full px-3 py-2 bg-[#0f1136] border rounded-lg focus:outline-none text-white ${
+                        errors.title ? 'border-red-500 focus:border-red-500' : 'border-[#2a2d6f] focus:border-blue-500'
+                      }`}
                       required
                     />
+                    {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">Valor (R$)</label>
                     <input
                       type="number"
                       step="0.01"
+                      min="0.01"
                       value={newPayment.amount}
-                      onChange={(e) => setNewPayment({ ...newPayment, amount: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#0f1136] border border-[#2a2d6f] rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                      onChange={(e) => {
+                        setNewPayment({ ...newPayment, amount: e.target.value });
+                        if (errors.amount) setErrors({ ...errors, amount: '' });
+                      }}
+                      className={`w-full px-3 py-2 bg-[#0f1136] border rounded-lg focus:outline-none text-white ${
+                        errors.amount ? 'border-red-500 focus:border-red-500' : 'border-[#2a2d6f] focus:border-blue-500'
+                      }`}
                       required
                     />
+                    {errors.amount && <p className="text-red-500 text-sm mt-1">{errors.amount}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">Data de Vencimento</label>
                     <input
                       type="date"
                       value={newPayment.dueDate}
-                      onChange={(e) => setNewPayment({ ...newPayment, dueDate: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#0f1136] border border-[#2a2d6f] rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                      onChange={(e) => {
+                        setNewPayment({ ...newPayment, dueDate: e.target.value });
+                        if (errors.dueDate) setErrors({ ...errors, dueDate: '' });
+                      }}
+                      className={`w-full px-3 py-2 bg-[#0f1136] border rounded-lg focus:outline-none text-white ${
+                        errors.dueDate ? 'border-red-500 focus:border-red-500' : 'border-[#2a2d6f] focus:border-blue-500'
+                      }`}
                       required
                     />
+                    {errors.dueDate && <p className="text-red-500 text-sm mt-1">{errors.dueDate}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Código de Barras</label>
+                    <input
+                      type="text"
+                      value={newPayment.barcode}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '');
+                        const formatted = value.replace(/(\d{5})(\d{5})(\d{5})(\d{6})(\d{5})(\d{6})(\d{1})(\d{14})/, '$1.$2 $3.$4 $5.$6 $7 $8');
+                        setNewPayment({ ...newPayment, barcode: formatted });
+                        if (errors.barcode) setErrors({ ...errors, barcode: '' });
+                      }}
+                      className={`w-full px-3 py-2 bg-[#0f1136] border rounded-lg focus:outline-none font-mono text-white ${
+                        errors.barcode ? 'border-red-500 focus:border-red-500' : 'border-[#2a2d6f] focus:border-blue-500'
+                      }`}
+                      placeholder="00000.00000 00000.000000 00000.000000 0 00000000000000"
+                      maxLength={54}
+                    />
+                    {errors.barcode ? (
+                      <p className="text-red-500 text-sm mt-1">{errors.barcode}</p>
+                    ) : (
+                      <p className="text-xs text-gray-500 mt-1">Digite apenas os números do código de barras</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Link de Pagamento ou Chave PIX</label>
+                    <input
+                      type="text"
+                      value={newPayment.link}
+                      onChange={(e) => {
+                        setNewPayment({ ...newPayment, link: e.target.value });
+                        if (errors.link) setErrors({ ...errors, link: '' });
+                      }}
+                      className={`w-full px-3 py-2 bg-[#0f1136] border rounded-lg focus:outline-none text-white ${
+                        errors.link ? 'border-red-500 focus:border-red-500' : 'border-[#2a2d6f] focus:border-blue-500'
+                      }`}
+                      placeholder="https://... ou chave PIX"
+                    />
+                    {errors.link ? (
+                      <p className="text-red-500 text-sm mt-1">{errors.link}</p>
+                    ) : (
+                      <p className="text-xs text-gray-500 mt-1">Link de pagamento ou chave PIX (opcional se código de barras preenchido)</p>
+                    )}
                   </div>
                   <div className="flex justify-end space-x-2">
                     <button
                       type="button"
                       onClick={() => {
                         setShowAddModal(false);
-                        setNewPayment({ title: '', description: '', amount: '', dueDate: '' });
+                        setNewPayment({ title: '', description: '', amount: '', dueDate: '', barcode: '', link: '' });
+                        setErrors({});
                       }}
                       className="px-4 py-2 text-gray-400 hover:text-gray-200 transition-colors"
                     >
@@ -452,12 +591,112 @@ export default function Payments() {
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      disabled={isSubmitting}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Adicionar
+                      {isSubmitting ? 'Adicionando...' : 'Adicionar'}
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* Modal de Confirmação de Exclusão */}
+          {showDeleteModal && (
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-[#1a1d4f] border border-[#2a2d6f] rounded-xl p-6 w-96">
+                <h3 className="text-lg font-semibold text-white mb-4">Confirmar Exclusão</h3>
+                <p className="text-gray-300 mb-6">Você tem certeza que deseja deletar este pagamento? Esta ação não pode ser desfeita.</p>
+                <div className="flex justify-end space-x-2">
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    className="px-4 py-2 text-gray-400 hover:text-gray-200 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Deletar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal de Comprovante */}
+          {showReceiptModal && selectedReceipt && (
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-[#1a1d4f] border border-[#2a2d6f] rounded-xl p-6 w-96 max-w-md">
+                <h3 className="text-lg font-semibold text-white mb-4">Comprovante de Pagamento</h3>
+                <div className="space-y-4">
+                  <div className="text-center border-b border-gray-600 pb-4">
+                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <span className="text-white text-xl">✓</span>
+                    </div>
+                    <p className="text-green-400 font-semibold">Pagamento Realizado</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-400">Título</p>
+                    <p className="font-medium text-white">{selectedReceipt.title}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-400">Valor Pago</p>
+                    <p className="font-medium text-lg text-green-400">
+                      R$ {selectedReceipt.amount?.toFixed(2) || '0.00'}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-400">Data de Vencimento</p>
+                    <p className="font-medium text-white">
+                      {new Date(selectedReceipt.dueDate).toLocaleDateString('pt-BR', { timeZone: 'America/Fortaleza' })}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-400">Data do Pagamento</p>
+                    <p className="font-medium text-white">
+                      {selectedReceipt.paidDate ? 
+                        new Date(selectedReceipt.paidDate).toLocaleDateString('pt-BR', { timeZone: 'America/Fortaleza' }) + 
+                        ' às ' + 
+                        new Date(selectedReceipt.paidDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Fortaleza' })
+                        : 'N/A'
+                      }
+                    </p>
+                  </div>
+                  
+                  {selectedReceipt.barcode && (
+                    <div>
+                      <p className="text-sm text-gray-400">Código de Barras</p>
+                      <p className="font-mono text-xs bg-[#0f1136] p-2 rounded text-gray-300 break-all">{selectedReceipt.barcode}</p>
+                    </div>
+                  )}
+                  
+                  {selectedReceipt.link && (
+                    <div>
+                      <p className="text-sm text-gray-400">Link de Pagamento</p>
+                      <p className="font-mono text-xs bg-[#0f1136] p-2 rounded text-gray-300 break-all">{selectedReceipt.link}</p>
+                    </div>
+                  )}
+                  
+                  <div className="text-center pt-4 border-t border-gray-600">
+                    <p className="text-xs text-gray-500">Comprovante gerado automaticamente</p>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-2 pt-4">
+                  <button
+                    onClick={() => setShowReceiptModal(false)}
+                    className="px-4 py-2 text-gray-400 hover:text-gray-200 transition-colors"
+                  >
+                    Fechar
+                  </button>
+                </div>
               </div>
             </div>
           )}
