@@ -27,8 +27,13 @@ export async function GET(request: NextRequest) {
         ]
       };
     } else {
-      // USER/ADM vê apenas seus próprios eventos
-      whereClause = { ownerId: decoded.userId };
+      // USER/ADM vê todos os eventos da empresa
+      const enterpriseId = user?.enterpriseId;
+      if (enterpriseId) {
+        whereClause = { enterpriseId };
+      } else {
+        whereClause = { ownerId: decoded.userId };
+      }
     }
     
     const events = await prisma.event.findMany({
@@ -65,6 +70,18 @@ export async function POST(request: NextRequest) {
 
     const { title, description, date, time, projectId } = await request.json();
 
+    // Buscar informações do usuário para determinar o enterpriseId correto
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!user) {
+      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
+    }
+
+    // Determinar o enterpriseId correto
+    const enterpriseId = user.accountType === 'ENTERPRISE' ? user.id : user.enterpriseId;
+    if (!enterpriseId) {
+      return NextResponse.json({ error: 'Usuário não está associado a uma empresa' }, { status: 400 });
+    }
+
     // Criar data usando UTC para evitar problemas de fuso horário
     const eventDate = new Date(date + 'T12:00:00.000Z');
     
@@ -76,7 +93,7 @@ export async function POST(request: NextRequest) {
         time,
         projectId: projectId || null,
         ownerId: decoded.userId,
-        enterpriseId: decoded.userId
+        enterpriseId
       }
     });
 

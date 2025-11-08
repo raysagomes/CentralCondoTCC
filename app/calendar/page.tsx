@@ -40,7 +40,10 @@ export default function Calendar() {
           if (!event.date) return;
           const eventDate = new Date(event.date);
           if (isNaN(eventDate.getTime())) return;
-          const dateKey = eventDate.toISOString().split('T')[0];
+          // Usar UTC para evitar problemas de fuso horário
+          const dateKey = eventDate.getUTCFullYear() + '-' + 
+            String(eventDate.getUTCMonth() + 1).padStart(2, '0') + '-' + 
+            String(eventDate.getUTCDate()).padStart(2, '0');
           if (!groupedEvents[dateKey]) {
             groupedEvents[dateKey] = [];
           }
@@ -213,8 +216,8 @@ export default function Calendar() {
         const eventDate = new Date(event.date);
         if (isNaN(eventDate.getTime())) return false;
         
-        // Comparar apenas a data, ignorando horário
-        const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+        // Usar UTC para comparação correta
+        const eventDay = new Date(eventDate.getUTCFullYear(), eventDate.getUTCMonth(), eventDate.getUTCDate());
         return eventDay >= today;
       })
       .sort((a, b) => {
