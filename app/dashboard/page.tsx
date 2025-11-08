@@ -407,18 +407,23 @@ export default function Dashboard() {
             <div className="flex justify-between items-center mb-4">
               <h3 className={`text-lg font-semibold ${theme.text} flex items-center`}>
                 <span className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></span>
-                Tarefas Pendentes
+                Minhas Tarefas
               </h3>
               <button
-                onClick={() => router.push('/projects')}
+                onClick={() => router.push('/tasks')}
                 className="text-yellow-500 hover:text-yellow-400 text-sm font-medium"
               >
-                Ver mais →
+                Ver todas →
               </button>
             </div>
             <div className="space-y-3">
               {pendingTasks.slice(0, 3).map((task: any) => (
-                <div key={task.id} className={`flex items-center space-x-3 p-3 ${theme.secondaryBg} rounded-lg ${theme.hover} transition`}>
+                <div key={task.id} 
+                     onClick={() => {
+                       // Navegar para projetos e selecionar o projeto da tarefa
+                       router.push(`/projects?projectId=${task.project.id}&taskId=${task.id}`);
+                     }}
+                     className={`flex items-center space-x-3 p-3 ${theme.secondaryBg} rounded-lg ${theme.hover} transition cursor-pointer`}>
                   <div className="w-2 h-2 bg-yellow-400 rounded-full flex-shrink-0"></div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${theme.text} truncate`}>{task.title}</p>
@@ -427,7 +432,7 @@ export default function Dashboard() {
                 </div>
               ))}
               {pendingTasks.length === 0 && (
-                <p className={`text-sm ${theme.textSecondary} text-center py-4`}>Nenhuma tarefa pendente</p>
+                <p className={`text-sm ${theme.textSecondary} text-center py-4`}>Nenhuma tarefa atribuída</p>
               )}
             </div>
           </div>
@@ -456,15 +461,21 @@ export default function Dashboard() {
                 const isUnread = !readNotifications.includes(notification.id.toString());
                 return (
                 <div key={notification.id} 
-                     onClick={() => {
-                       markNotificationAsRead(notification.id.toString());
-                       // Mark all notifications as read
-                       const allIds = dashboardNotifications.map(n => n.id.toString());
-                       const updatedRead = [...new Set([...readNotifications, ...allIds])];
-                       setReadNotifications(updatedRead);
-                       localStorage.setItem('readNotifications', JSON.stringify(updatedRead));
-                       setHasNewNotification(false);
-                       window.dispatchEvent(new Event('notificationsUpdated'));
+                     onClick={async () => {
+                       try {
+                         const token = localStorage.getItem('token');
+                         await fetch('/api/notifications', {
+                           method: 'PATCH',
+                           headers: {
+                             'Content-Type': 'application/json',
+                             'Authorization': `Bearer ${token}`
+                           },
+                           body: JSON.stringify({ notificationId: notification.id })
+                         });
+                         markNotificationAsRead(notification.id.toString());
+                       } catch (error) {
+                         console.error('Erro ao marcar notificação como lida:', error);
+                       }
                      }}
                      className={`flex items-start space-x-3 p-3 rounded-lg transition-all duration-200 cursor-pointer ${
                   isNew && isUnread
@@ -476,7 +487,7 @@ export default function Dashboard() {
                   }`}></div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
-                      <p className={`text-sm font-medium ${theme.text}`}>{notification.title}</p>
+                      <p className={`text-sm font-medium text-red-600`}>{notification.title}</p>
                       {isNew && isUnread && (
                         <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-bounce font-bold">
                           NOVA!

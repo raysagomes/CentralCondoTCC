@@ -3,13 +3,20 @@ import { IEventRepository } from '../interfaces/IEventRepository';
 
 export class EventRepository implements IEventRepository {
   async findByOwnerId(ownerId: string): Promise<any[]> {
+    // Buscar o usuário para obter o enterpriseId
+    const user = await prisma.user.findUnique({
+      where: { id: ownerId }
+    });
+    
+    if (!user) return [];
+    
+    // Determinar o enterpriseId
+    const enterpriseId = user.accountType === 'ENTERPRISE' ? user.id : user.enterpriseId;
+    
+    if (!enterpriseId) return [];
+    
     return prisma.event.findMany({
-      where: {
-        OR: [
-          { project: { ownerId } },
-          { projectId: null }
-        ]
-      },
+      where: { enterpriseId },
       include: { project: true },
       orderBy: { date: 'asc' }
     });
@@ -20,12 +27,21 @@ export class EventRepository implements IEventRepository {
   }
 
   async findRecentByOwnerId(ownerId: string): Promise<any[]> {
+    // Buscar o usuário para obter o enterpriseId
+    const user = await prisma.user.findUnique({
+      where: { id: ownerId }
+    });
+    
+    if (!user) return [];
+    
+    // Determinar o enterpriseId
+    const enterpriseId = user.accountType === 'ENTERPRISE' ? user.id : user.enterpriseId;
+    
+    if (!enterpriseId) return [];
+    
     return prisma.event.findMany({
       where: {
-        OR: [
-          { project: { ownerId } },
-          { projectId: null }
-        ],
+        enterpriseId,
         date: { gte: new Date() }
       },
       include: { project: true },

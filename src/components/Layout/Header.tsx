@@ -18,7 +18,7 @@ export default function Header() {
   const profileRef = useRef<HTMLDivElement>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notificationCount, setNotificationCount] = useState(0);
-  const [readNotifications, setReadNotifications] = useState<string[]>([]);
+
 
   const handleLogout = () => {
     logout();
@@ -34,10 +34,7 @@ export default function Header() {
       if (response.ok) {
         const data = await response.json();
         setNotifications(data);
-        const savedRead = localStorage.getItem('readNotifications');
-        const parsedRead = savedRead ? JSON.parse(savedRead) : [];
-        setReadNotifications(parsedRead);
-        const unreadCount = data.filter((n: any) => !parsedRead.includes(n.id.toString())).length;
+        const unreadCount = data.filter((n: any) => n.status !== 'READ').length;
         setNotificationCount(unreadCount);
       }
     } catch (error) {
@@ -55,11 +52,17 @@ export default function Header() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      const updatedRead = [...readNotifications, notificationId];
-      setReadNotifications(updatedRead);
-      localStorage.setItem('readNotifications', JSON.stringify(updatedRead));
+      // Atualizar o estado local
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === notificationId 
+            ? { ...notif, status: 'READ' } 
+            : notif
+        )
+      );
       
-      const unreadCount = notifications.filter(n => !updatedRead.includes(n.id.toString())).length;
+      // Recalcular contador
+      const unreadCount = notifications.filter(n => n.id !== notificationId && n.status !== 'READ').length;
       setNotificationCount(unreadCount);
     } catch (error) {
       console.error('Erro ao marcar notificação como lida:', error);
@@ -160,7 +163,7 @@ export default function Header() {
                 <div className="max-h-96 overflow-y-auto">
                   {notifications.length > 0 ? (
                     notifications.slice(0, 5).map((notification) => {
-                      const isRead = notification.seen || readNotifications.includes(notification.id.toString());
+                      const isRead = notification.status === 'READ';
                       return (
                       <div 
                         key={notification.id} 

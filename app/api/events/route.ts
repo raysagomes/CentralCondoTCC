@@ -14,24 +14,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    // Buscar o usuário para obter o enterpriseId
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
-    }
-
-    // Determinar o enterpriseId
-    const enterpriseId = user.accountType === 'ENTERPRISE' ? user.id : user.enterpriseId;
+    // Buscar eventos do usuário logado
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
     
-    if (!enterpriseId) {
-      return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 400 });
+    let whereClause;
+    if (user?.accountType === 'ENTERPRISE') {
+      // ENTERPRISE vê todos os eventos da empresa
+      whereClause = {
+        OR: [
+          { ownerId: decoded.userId },
+          { enterpriseId: decoded.userId }
+        ]
+      };
+    } else {
+      // USER/ADM vê todos os eventos da empresa
+      const enterpriseId = user?.enterpriseId;
+      if (enterpriseId) {
+        whereClause = { enterpriseId };
+      } else {
+        whereClause = { ownerId: decoded.userId };
+      }
     }
-
+    
     const events = await prisma.event.findMany({
-      where: { enterpriseId },
+      where: whereClause,
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
       orderBy: { date: 'asc' }
     });
 
@@ -54,30 +68,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const { title, description, date, time } = await request.json();
+    const { title, description, date, time, projectId } = await request.json();
 
-    // Buscar o usuário para obter o enterpriseId
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
-    });
-
+    // Buscar informações do usuário para determinar o enterpriseId correto
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
     if (!user) {
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
     }
 
-    // Determinar o enterpriseId
+    // Determinar o enterpriseId correto
     const enterpriseId = user.accountType === 'ENTERPRISE' ? user.id : user.enterpriseId;
-    
     if (!enterpriseId) {
-      return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 400 });
+      return NextResponse.json({ error: 'Usuário não está associado a uma empresa' }, { status: 400 });
     }
 
+    // Criar data usando UTC para evitar problemas de fuso horário
+    const eventDate = new Date(date + 'T12:00:00.000Z');
+    
     const event = await prisma.event.create({
       data: {
         title,
         description,
-        date: new Date(date),
+        date: eventDate,
         time,
+        projectId: projectId || null,
+        ownerId: decoded.userId,
         enterpriseId
       }
     });
