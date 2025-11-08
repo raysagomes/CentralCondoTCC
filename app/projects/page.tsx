@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import AppLayout from '../../src/components/Layout/AppLayout';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { getThemeClasses } from '../../src/utils/themeClasses';
-import { FaPlus, FaEdit, FaTrash, FaUser, FaCalendarAlt, FaUserTie, FaComments, FaTimes } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaUser, FaCalendarAlt, FaUserTie, FaComments, FaTimes, FaClock, FaBolt, FaCheck, FaExclamationTriangle } from 'react-icons/fa';
 import { useProjects } from '../../src/hooks/useProjects';
 
 export default function Projects() {
@@ -13,10 +13,13 @@ export default function Projects() {
   const { isDark } = useTheme();
   const theme = getThemeClasses(isDark);
   const router = useRouter();
-  const { projects, loading: projectsLoading, createProject, createTask, updateTask, deleteTask } = useProjects();
+  const { projects, loading: projectsLoading, createProject, updateProject, createTask, updateTask, deleteTask } = useProjects();
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [isUpdatingProject, setIsUpdatingProject] = useState(false);
   const [newProject, setNewProject] = useState({ name: '', description: '' });
   const [newTask, setNewTask] = useState({ title: '', description: '', assignedToId: '', deadline: '' });
   const [editingTask, setEditingTask] = useState<any>(null);
@@ -27,6 +30,11 @@ export default function Projects() {
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isAddingComment, setIsAddingComment] = useState(false);
+  const [editingComment, setEditingComment] = useState<any>(null);
+  const [editCommentText, setEditCommentText] = useState('');
+  const [isUpdatingComment, setIsUpdatingComment] = useState(false);
+  const [isDeletingComment, setIsDeletingComment] = useState<string | null>(null);
   const [members, setMembers] = useState([]);
   const [projectMembers, setProjectMembers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -86,8 +94,9 @@ export default function Projects() {
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!newComment.trim() && selectedFiles.length === 0) || !selectedTaskForComments) return;
+    if ((!newComment.trim() && selectedFiles.length === 0) || !selectedTaskForComments || isAddingComment) return;
 
+    setIsAddingComment(true);
     try {
       const token = localStorage.getItem('token');
       const formData = new FormData();
@@ -112,6 +121,63 @@ export default function Projects() {
       }
     } catch (error) {
       console.error('Erro ao adicionar comentário:', error);
+    } finally {
+      setIsAddingComment(false);
+    }
+  };
+
+  const handleEditComment = (comment: any) => {
+    setEditingComment(comment);
+    setEditCommentText(comment.content);
+  };
+
+  const handleUpdateComment = async () => {
+    if (!editingComment || !editCommentText.trim() || isUpdatingComment) return;
+
+    setIsUpdatingComment(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/tasks/${selectedTaskForComments.id}/comments/${editingComment.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content: editCommentText.trim() })
+      });
+      
+      if (response.ok) {
+        setEditingComment(null);
+        setEditCommentText('');
+        fetchComments(selectedTaskForComments.id);
+      }
+    } catch (error) {
+      console.error('Erro ao editar comentário:', error);
+    } finally {
+      setIsUpdatingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm('Tem certeza que deseja deletar este comentário?') || isDeletingComment) return;
+
+    setIsDeletingComment(commentId);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/tasks/${selectedTaskForComments.id}/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        fetchComments(selectedTaskForComments.id);
+      }
+    } catch (error) {
+      console.error('Erro ao deletar comentário:', error);
+    } finally {
+      setIsDeletingComment(null);
     }
   };
 
@@ -173,19 +239,26 @@ export default function Projects() {
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await createProject(newProject.name, newProject.description);
-    if (result.success) {
-      setShowCreateModal(false);
-      setNewProject({ name: '', description: '' });
-      if (result.project) {
-        setSelectedProject(result.project);
+    if (isCreatingProject) return;
+    
+    setIsCreatingProject(true);
+    try {
+      const result = await createProject(newProject.name, newProject.description);
+      if (result.success) {
+        setShowCreateModal(false);
+        setNewProject({ name: '', description: '' });
       }
+    } finally {
+      setIsCreatingProject(false);
     }
   };
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedProject) {
+    if (!selectedProject || isCreatingTask) return;
+    
+    setIsCreatingTask(true);
+    try {
       const taskData = {
         title: newTask.title,
         description: newTask.description,
@@ -201,26 +274,11 @@ export default function Projects() {
           setSelectedProject({...updatedProject});
         }
       }
+    } finally {
+      setIsCreatingTask(false);
     }
   };
 
-  const handleQuickCreateTask = async () => {
-    if (selectedProject) {
-      const taskNumber = (selectedProject.tasks?.length || 0) + 1;
-      const result = await createTask(
-        selectedProject.id, 
-        `Nova Tarefa ${taskNumber}`, 
-        'Descrição da tarefa', 
-        undefined
-      );
-      if (result.success) {
-        const updatedProject = projects.find(p => p.id === selectedProject.id);
-        if (updatedProject) {
-          setSelectedProject({...updatedProject});
-        }
-      }
-    }
-  };
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
     await updateTask(taskId, { status: newStatus });
@@ -279,26 +337,20 @@ export default function Projects() {
 
   const handleUpdateProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProject) return;
+    if (!selectedProject || isUpdatingProject) return;
 
+    setIsUpdatingProject(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/projects/${selectedProject.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(editingProject)
-      });
-
-      if (response.ok) {
-        const updatedProject = await response.json();
-        setSelectedProject(updatedProject);
+      const result = await updateProject(selectedProject.id, editingProject);
+      if (result.success) {
         setShowEditProjectModal(false);
+        const updatedProject = projects.find(p => p.id === selectedProject.id);
+        if (updatedProject) {
+          setSelectedProject({...updatedProject});
+        }
       }
-    } catch (error) {
-      console.error('Erro ao atualizar projeto:', error);
+    } finally {
+      setIsUpdatingProject(false);
     }
   };
 
@@ -350,10 +402,13 @@ export default function Projects() {
                     <>
                       <button 
                         onClick={() => {
+                          console.log('selectedProject.members:', selectedProject.members);
+                          const memberIds = selectedProject.members?.map((m: any) => m.userId || m.id) || [];
+                          console.log('memberIds:', memberIds);
                           setEditingProject({
                             name: selectedProject.name,
                             description: selectedProject.description || '',
-                            memberIds: selectedProject.members?.map((m: any) => m.userId) || []
+                            memberIds: memberIds
                           });
                           setShowEditProjectModal(true);
                         }}
@@ -395,19 +450,19 @@ export default function Projects() {
                 <div className="grid grid-cols-4 gap-3 text-center">
                   <div className={`p-3 ${theme.secondaryBg} rounded-lg`}>
                     <div className="text-lg font-bold text-yellow-400">
-                      {selectedProject.tasks?.filter(t => t.status === 'PENDING').length || 0}
+                      {selectedProject.tasks?.filter((t: any) => t.status === 'PENDING').length || 0}
                     </div>
                     <div className={`text-xs ${theme.textSecondary}`}>Pendentes</div>
                   </div>
                   <div className={`p-3 ${theme.secondaryBg} rounded-lg`}>
                     <div className="text-lg font-bold text-blue-400">
-                      {selectedProject.tasks?.filter(t => t.status === 'IN_PROGRESS').length || 0}
+                      {selectedProject.tasks?.filter((t: any) => t.status === 'IN_PROGRESS').length || 0}
                     </div>
                     <div className={`text-xs ${theme.textSecondary}`}>Em Progresso</div>
                   </div>
                   <div className={`p-3 ${theme.secondaryBg} rounded-lg`}>
                     <div className="text-lg font-bold text-green-400">
-                      {selectedProject.tasks?.filter(t => t.status === 'COMPLETED').length || 0}
+                      {selectedProject.tasks?.filter((t: any) => t.status === 'COMPLETED').length || 0}
                     </div>
                     <div className={`text-xs ${theme.textSecondary}`}>Concluídas</div>
                   </div>
@@ -502,19 +557,19 @@ export default function Projects() {
                         {/* Cabeçalho da tarefa */}
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex items-center space-x-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
-                              {task.status === 'PENDING' ? '🕰️ Pendente' : 
-                               task.status === 'IN_PROGRESS' ? '⚡ Em Progresso' : 
-                               '✓ Concluída'}
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)} flex items-center`}>
+                              {task.status === 'PENDING' ? <><FaClock className="mr-1" /> Pendente</> : 
+                               task.status === 'IN_PROGRESS' ? <><FaBolt className="mr-1" /> Em Progresso</> : 
+                               <><FaCheck className="mr-1" /> Concluída</>}
                             </span>
                             {isOverdue && (
-                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
-                                ⚠️ Atrasada
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 flex items-center">
+                                <FaExclamationTriangle className="mr-1" /> Atrasada
                               </span>
                             )}
                             {isDueSoon && !isOverdue && (
-                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400">
-                                ⏰ Urgente
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 flex items-center">
+                                <FaClock className="mr-1" /> Urgente
                               </span>
                             )}
                           </div>
@@ -745,8 +800,8 @@ export default function Projects() {
                         ? 'bg-blue-500/20 text-blue-400'
                         : 'bg-yellow-500/20 text-yellow-400'
                   }`}>
-                    {calculateProgress(project.tasks) === 100 ? '✓ Completo' : 
-                     calculateProgress(project.tasks) > 50 ? '⚡ Progredindo' : '🚀 Iniciando'}
+                    {calculateProgress(project.tasks) === 100 ? <><FaCheck className="inline mr-1" /> Completo</> : 
+                     calculateProgress(project.tasks) > 50 ? <><FaBolt className="inline mr-1" /> Progredindo</> : <><FaClock className="inline mr-1" /> Iniciando</>}
                   </div>
                 </div>
               </div>
@@ -802,9 +857,10 @@ export default function Projects() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    disabled={isCreatingProject}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Criar
+                    {isCreatingProject ? 'Criando...' : 'Criar'}
                   </button>
                 </div>
               </form>
@@ -869,9 +925,10 @@ export default function Projects() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    disabled={isCreatingTask}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Criar
+                    {isCreatingTask ? 'Criando...' : 'Criar'}
                   </button>
                 </div>
               </form>
@@ -1044,30 +1101,87 @@ export default function Projects() {
                             </span>
                           </div>
                           <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <span className={`font-medium ${theme.text} text-sm`}>{comment.author.name}</span>
-                              <span className={`px-2 py-0.5 rounded text-xs ${comment.author.accountType === 'ENTERPRISE' ? 'bg-purple-500/20 text-purple-400' : comment.author.accountType === 'ADM' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'}`}>
-                                {comment.author.accountType === 'ENTERPRISE' ? 'Enterprise' : comment.author.accountType === 'ADM' ? 'Admin' : 'Usuário'}
-                              </span>
-                              <span className={`text-xs ${theme.textSecondary}`}>
-                                {new Date(comment.createdAt).toLocaleDateString('pt-BR')} às {new Date(comment.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                            <p className={`${theme.text} text-sm leading-relaxed`}>{comment.content}</p>
-                            {comment.attachments && comment.attachments.length > 0 && (
-                              <div className="mt-2 space-y-1">
-                                {comment.attachments.map((attachment: string, index: number) => (
-                                  <a
-                                    key={index}
-                                    href={attachment}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-block text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded mr-2 hover:bg-blue-500/30 transition-colors"
-                                  >
-                                    📎 Anexo {index + 1}
-                                  </a>
-                                ))}
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center space-x-2">
+                                <span className={`font-medium ${theme.text} text-sm`}>{comment.author.name}</span>
+                                <span className={`px-2 py-0.5 rounded text-xs ${comment.author.accountType === 'ENTERPRISE' ? 'bg-purple-500/20 text-purple-400' : comment.author.accountType === 'ADM' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'}`}>
+                                  {comment.author.accountType === 'ENTERPRISE' ? 'Enterprise' : comment.author.accountType === 'ADM' ? 'Admin' : 'Usuário'}
+                                </span>
+                                <span className={`text-xs ${theme.textSecondary}`}>
+                                  {new Date(comment.createdAt).toLocaleDateString('pt-BR')} às {new Date(comment.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                {comment.updatedAt && (
+                                  <span className={`text-xs ${theme.textSecondary} italic`}>
+                                    (editado)
+                                  </span>
+                                )}
                               </div>
+                              {comment.author.id === user?.id && (
+                                <div className="flex space-x-1">
+                                  <button
+                                    onClick={() => handleEditComment(comment)}
+                                    className="text-blue-400 hover:text-blue-300 text-xs p-1 rounded hover:bg-blue-500/20 transition-all duration-200"
+                                    title="Editar comentário"
+                                  >
+                                    <FaEdit />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteComment(comment.id)}
+                                    disabled={isDeletingComment === comment.id}
+                                    className="text-red-400 hover:text-red-300 text-xs p-1 rounded hover:bg-red-500/20 transition-all duration-200 disabled:opacity-50"
+                                    title="Deletar comentário"
+                                  >
+                                    {isDeletingComment === comment.id ? '...' : <FaTrash />}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            {editingComment?.id === comment.id ? (
+                              <div className="space-y-2">
+                                <textarea
+                                  value={editCommentText}
+                                  onChange={(e) => setEditCommentText(e.target.value)}
+                                  className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text} text-sm`}
+                                  rows={3}
+                                />
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={handleUpdateComment}
+                                    disabled={isUpdatingComment || !editCommentText.trim()}
+                                    className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {isUpdatingComment ? 'Salvando...' : 'Salvar'}
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditingComment(null);
+                                      setEditCommentText('');
+                                    }}
+                                    className="px-3 py-1 bg-gray-600 text-white rounded text-xs hover:bg-gray-700 transition-colors"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <p className={`${theme.text} text-sm leading-relaxed`}>{comment.content}</p>
+                                {comment.attachments && comment.attachments.length > 0 && (
+                                  <div className="mt-2 space-y-1">
+                                    {comment.attachments.map((attachment: string, index: number) => (
+                                      <a
+                                        key={index}
+                                        href={attachment}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-block text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded mr-2 hover:bg-blue-500/30 transition-colors"
+                                      >
+                                        <FaPlus className="inline mr-1" /> Anexo {index + 1}
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -1111,15 +1225,15 @@ export default function Projects() {
                       htmlFor="file-upload"
                       className={`cursor-pointer text-sm ${theme.textSecondary} hover:${theme.text} transition-colors`}
                     >
-                      📎 Anexar arquivos
+                      {/* <FaPlus className="inline mr-1" /> Anexar arquivos */}
                     </label>
                     
                     <button
                       type="submit"
-                      disabled={!newComment.trim() && selectedFiles.length === 0}
+                      disabled={(!newComment.trim() && selectedFiles.length === 0) || isAddingComment}
                       className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Enviar
+                      {isAddingComment ? 'Enviando...' : 'Enviar'}
                     </button>
                   </div>
                   
@@ -1128,13 +1242,13 @@ export default function Projects() {
                     <div className="ml-11 space-y-1">
                       {selectedFiles.map((file, index) => (
                         <div key={index} className={`flex items-center justify-between text-xs ${theme.textSecondary} bg-gray-500/10 px-2 py-1 rounded`}>
-                          <span>📎 {file.name}</span>
+                          <span><FaPlus className="inline mr-1" /> {file.name}</span>
                           <button
                             type="button"
                             onClick={() => setSelectedFiles(files => files.filter((_, i) => i !== index))}
                             className="text-red-400 hover:text-red-300 ml-2"
                           >
-                            ✕
+                            <FaTimes />
                           </button>
                         </div>
                       ))}
@@ -1171,6 +1285,51 @@ export default function Projects() {
                     rows={3}
                   />
                 </div>
+                
+                {/* Seção de Membros */}
+                <div>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>Membros do Projeto</label>
+                  <div className={`${theme.secondaryBg} border ${theme.border} rounded-lg p-3 max-h-40 overflow-y-auto`}>
+                    {members.length === 0 ? (
+                      <p className={`text-sm ${theme.textSecondary}`}>Carregando membros...</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {members.filter((member: any) => member.accountType !== 'ENTERPRISE').map((member: any) => (
+                          <label key={member.id} className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={editingProject.memberIds.includes(member.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setEditingProject({
+                                    ...editingProject,
+                                    memberIds: [...editingProject.memberIds, member.id]
+                                  });
+                                } else {
+                                  setEditingProject({
+                                    ...editingProject,
+                                    memberIds: editingProject.memberIds.filter(id => id !== member.id)
+                                  });
+                                }
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className={`text-sm ${theme.text}`}>{member.name}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded ${
+                              member.accountType === 'ADM' ? 'bg-blue-500/20 text-blue-400' :
+                              'bg-green-500/20 text-green-400'
+                            }`}>
+                              {member.accountType === 'ADM' ? 'Admin' : 'User'}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <p className={`text-xs ${theme.textSecondary} mt-1`}>
+                    {editingProject.memberIds.length} membro(s) selecionado(s)
+                  </p>
+                </div>
 
                 <div className="flex justify-end space-x-2">
                   <button
@@ -1182,9 +1341,10 @@ export default function Projects() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    disabled={isUpdatingProject}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Salvar
+                    {isUpdatingProject ? 'Salvando...' : 'Salvar'}
                   </button>
                 </div>
               </form>

@@ -109,13 +109,15 @@ enum TaskStatus {
 }
 
 model Comment {
-  id        String   @id @default(uuid())
-  content   String
-  taskId    String
-  task      Task     @relation(fields: [taskId], references: [id])
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  content     String
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id])
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  attachments String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime? 
 }
 
 //////////////////////////

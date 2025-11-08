@@ -113,6 +113,30 @@ export const useProjects = () => {
     }
   };
 
+  const updateProject = async (projectId: string, updates: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updates)
+      });
+
+      if (response.ok) {
+        await fetchProjects();
+        return { success: true };
+      } else {
+        const data = await response.json();
+        return { success: false, error: data.error };
+      }
+    } catch (error) {
+      return { success: false, error: 'Erro ao atualizar projeto' };
+    }
+  };
+
   const deleteTask = async (taskId: string) => {
     try {
       const token = localStorage.getItem('token');
@@ -143,6 +167,7 @@ export const useProjects = () => {
     projects,
     loading,
     createProject,
+    updateProject,
     createTask,
     updateTask,
     deleteTask,

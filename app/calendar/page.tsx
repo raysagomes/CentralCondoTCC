@@ -388,9 +388,9 @@ export default function Calendar() {
                       {(() => {
                         try {
                           if (!event.date) return 'Data não definida';
-                          const date = new Date(event.date + 'T00:00:00');
+                          const date = new Date(event.date);
                           if (isNaN(date.getTime())) return 'Data inválida';
-                          return date.toLocaleDateString('pt-BR', { timeZone: 'America/Fortaleza' });
+                          return date.toLocaleDateString('pt-BR');
                         } catch {
                           return 'Data inválida';
                         }
@@ -455,7 +455,7 @@ export default function Calendar() {
                     if (!selectedDate) return '';
                     const date = new Date(selectedDate + 'T00:00:00');
                     if (isNaN(date.getTime())) return '';
-                    return date.toLocaleDateString('pt-BR', { timeZone: 'America/Fortaleza' });
+                    return date.toLocaleDateString('pt-BR');
                   } catch {
                     return '';
                   }
