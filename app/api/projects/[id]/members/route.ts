@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Membros que têm acesso: owner + membros do projeto + enterprise da empresa
-    const projectMembers = project.members.map((m: any) => m.user);
+    const projectMembers = project.members.map(m => m.user);
     const owner = project.owner;
     
     // Buscar enterprise se não for o próprio owner
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       ...projectMembers,
       ...(enterprise ? [enterprise] : [])
     ].filter((member, index, self) => 
-      self.findIndex((m: any) => m.id === member.id) === index
+      self.findIndex(m => m.id === member.id) === index
     );
 
     return NextResponse.json(accessibleMembers.map(member => ({

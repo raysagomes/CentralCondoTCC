@@ -1,3 +1,5 @@
+import { FaUsers, FaTasks, FaDollarSign, FaBell, FaCalendarAlt, FaBolt } from 'react-icons/fa';
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-200">
@@ -27,7 +29,7 @@ export default function Home() {
         <div className="mt-20 grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           <div className="bg-[#1a1d4f] border border-[#2a2d6f] p-6 rounded-xl hover:border-blue-500/50 transition-all duration-200">
             <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4">
-              <span className="text-2xl">👥</span>
+              <FaUsers className="text-2xl text-blue-400" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Gerenciamento de Equipes</h3>
             <p className="text-gray-400">Criação de perfis, atribuição de funções e controle de acesso com comunicação interna.</p>
@@ -35,7 +37,7 @@ export default function Home() {
 
           <div className="bg-[#1a1d4f] border border-[#2a2d6f] p-6 rounded-xl hover:border-purple-500/50 transition-all duration-200">
             <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
-              <span className="text-2xl">📋</span>
+              <FaTasks className="text-2xl text-purple-400" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Projetos e Atividades</h3>
             <p className="text-gray-400">Estruturação de projetos com etapas, prazos, responsáveis e status de progresso.</p>
@@ -43,7 +45,7 @@ export default function Home() {
 
           <div className="bg-[#1a1d4f] border border-[#2a2d6f] p-6 rounded-xl hover:border-green-500/50 transition-all duration-200">
             <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mb-4">
-              <span className="text-2xl">💰</span>
+              <FaDollarSign className="text-2xl text-green-400" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Sistema de Pagamentos</h3>
             <p className="text-gray-400">Controle de valores por tarefa e registro de pagamentos realizados e pendentes.</p>
@@ -51,7 +53,7 @@ export default function Home() {
 
           <div className="bg-[#1a1d4f] border border-[#2a2d6f] p-6 rounded-xl hover:border-yellow-500/50 transition-all duration-200">
             <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center mb-4">
-              <span className="text-2xl">🔔</span>
+              <FaBell className="text-2xl text-yellow-400" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Avisos e Notificações</h3>
             <p className="text-gray-400">Envio automático de alertas sobre prazos, atualizações e mensagens internas.</p>
@@ -59,7 +61,7 @@ export default function Home() {
 
           <div className="bg-[#1a1d4f] border border-[#2a2d6f] p-6 rounded-xl hover:border-pink-500/50 transition-all duration-200">
             <div className="w-12 h-12 bg-pink-500/20 rounded-lg flex items-center justify-center mb-4">
-              <span className="text-2xl">📅</span>
+              <FaCalendarAlt className="text-2xl text-pink-400" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Calendário Personalizável</h3>
             <p className="text-gray-400">Visualização de tarefas e eventos com filtros por equipe, projeto ou usuário.</p>
@@ -67,7 +69,7 @@ export default function Home() {
 
           <div className="bg-[#1a1d4f] border border-[#2a2d6f] p-6 rounded-xl hover:border-red-500/50 transition-all duration-200">
             <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center mb-4">
-              <span className="text-2xl">⚡</span>
+              <FaBolt className="text-2xl text-red-400" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Tempo Real</h3>
             <p className="text-gray-400">Acompanhamento e atualizações instantâneas para toda a equipe.</p>

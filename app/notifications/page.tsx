@@ -76,7 +76,7 @@ export default function Notifications() {
       setNotifications(prev => 
         prev.map(notif => 
           notif.id === notificationId 
-            ? { ...notif, status: 'read' } 
+            ? { ...notif, status: 'READ' } 
             : notif
         )
       );
@@ -88,7 +88,7 @@ export default function Notifications() {
   const markAllAsRead = async () => {
     try {
       const token = localStorage.getItem('token');
-      const unreadNotifications = notifications.filter(n => n.status !== 'read');
+      const unreadNotifications = notifications.filter(n => n.status !== 'READ');
       
       await Promise.all(
         unreadNotifications.map(notif => 
@@ -104,17 +104,32 @@ export default function Notifications() {
       );
       
       setNotifications(prev => 
-        prev.map(notif => ({ ...notif, status: 'read' }))
+        prev.map(notif => ({ ...notif, status: 'READ' }))
       );
     } catch (error) {
       console.error('Erro ao marcar todas como lidas:', error);
     }
   };
 
-  const handleSettingChange = (key: string, value: boolean) => {
+  const handleSettingChange = async (key: string, value: boolean) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     localStorage.setItem('notificationSettings', JSON.stringify(newSettings));
+    
+    // Salvar no banco de dados 
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('/api/notifications/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newSettings)
+      });
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error);
+    }
   };
 
   if (loading) {
@@ -343,7 +358,7 @@ export default function Notifications() {
                                 onClick={() => markAsRead(notification.id)}
                                 className="flex items-center"
                               >
-                                {notification.status === 'read' ? (
+                                {notification.status === 'READ' ? (
                                   <FaEyeSlash className="text-gray-400" />
                                 ) : (
                                   <FaEye className="text-blue-500" />
@@ -356,7 +371,7 @@ export default function Notifications() {
                               </div>
                             </td>
                             <td className="py-3">
-                              <span className={`${notification.status !== 'read' ? 'font-semibold' : ''} ${theme.text}`}>
+                              <span className={`${notification.status !== 'READ' ? 'font-semibold' : ''} ${theme.text}`}>
                                 {notification.title}
                               </span>
                             </td>
@@ -364,7 +379,7 @@ export default function Notifications() {
                               {notification.message}
                             </td>
                             <td className={`py-3 ${theme.textSecondary} text-xs`}>
-                              {new Date(notification.createdAt).toLocaleDateString('pt-BR')}
+                              {new Date(notification.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Fortaleza' })} às {new Date(notification.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Fortaleza' })}
                             </td>
                           </tr>
                         );

@@ -40,21 +40,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const { title, amount, dueDate } = await request.json();
+    const { title, amount, dueDate, barcode, link } = await request.json();
 
+    // Criar data com timezone de Fortaleza
+    const paymentDueDate = new Date(dueDate + 'T23:59:59-03:00');
+    
     const payment = await prisma.payment.create({
       data: {
         title,
-        dueDate: new Date(dueDate),
+        amount,
+        dueDate: paymentDueDate,
+        barcode,
+        link,
         paid: false,
-        link: amount.toString(),
         ownerId: decoded.userId
       }
     });
 
     // Criar notificação imediatamente
     const now = new Date();
-    const paymentDueDate = new Date(dueDate);
     const daysUntilDue = Math.ceil((paymentDueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     
     if (daysUntilDue <= 14 && daysUntilDue >= 0) {

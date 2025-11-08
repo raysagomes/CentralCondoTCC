@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       });
 
       await Promise.all(
-        usersToNotify.map((targetUser: any) => 
+        usersToNotify.map(targetUser => 
           prisma.notification.create({
             data: {
               title: `Novo aviso: ${title}`,

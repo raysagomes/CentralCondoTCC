@@ -26,6 +26,24 @@ export async function GET(request: NextRequest) {
     const [recentEvents, pendingTasks, notifications] = await Promise.all([
       eventService.getRecentEventsByOwner(decoded.userId),
       taskService.getPendingTasksByOwner(decoded.userId),
+      prisma.event.findMany({
+        where: { ownerId: decoded.userId },
+        orderBy: { date: 'asc' },
+        take: 5,
+        include: { project: true }
+      }),
+      prisma.task.findMany({
+        where: { 
+          assignedToId: decoded.userId,
+          status: { in: ['PENDING', 'IN_PROGRESS'] }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        include: { 
+          project: { select: { id: true, name: true } },
+          createdBy: { select: { name: true } }
+        }
+      }),
       prisma.notification.findMany({
         where: { userId: decoded.userId, status: 'UNREAD' },
         orderBy: { createdAt: 'desc' },

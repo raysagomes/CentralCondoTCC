@@ -40,7 +40,10 @@ export default function Calendar() {
           if (!event.date) return;
           const eventDate = new Date(event.date);
           if (isNaN(eventDate.getTime())) return;
-          const dateKey = eventDate.toISOString().split('T')[0];
+          // Usar UTC para evitar problemas de fuso horário
+          const dateKey = eventDate.getUTCFullYear() + '-' + 
+            String(eventDate.getUTCMonth() + 1).padStart(2, '0') + '-' + 
+            String(eventDate.getUTCDate()).padStart(2, '0');
           if (!groupedEvents[dateKey]) {
             groupedEvents[dateKey] = [];
           }
@@ -49,7 +52,8 @@ export default function Calendar() {
             title: event.title,
             type: 'event',
             time: event.time || '00:00',
-            description: event.description
+            description: event.description,
+            date: event.date
           });
         });
         setEvents(groupedEvents);
@@ -212,21 +216,21 @@ export default function Calendar() {
         const eventDate = new Date(event.date);
         if (isNaN(eventDate.getTime())) return false;
         
-        // Comparar apenas a data, ignorando horário para eventos do dia atual
-        const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+        // Usar UTC para comparação correta
+        const eventDay = new Date(eventDate.getUTCFullYear(), eventDate.getUTCMonth(), eventDate.getUTCDate());
         return eventDay >= today;
       })
       .sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
+        const dateA = new Date(a.date + 'T00:00:00');
+        const dateB = new Date(b.date + 'T00:00:00');
         
         if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0;
         
         const [hoursA, minutesA] = (a.time || '00:00').split(':');
         const [hoursB, minutesB] = (b.time || '00:00').split(':');
         
-        const dateTimeA = new Date(a.date);
-        const dateTimeB = new Date(b.date);
+        const dateTimeA = new Date(a.date + 'T00:00:00');
+        const dateTimeB = new Date(b.date + 'T00:00:00');
         dateTimeA.setHours(parseInt(hoursA), parseInt(minutesA), 0, 0);
         dateTimeB.setHours(parseInt(hoursB), parseInt(minutesB), 0, 0);
         
@@ -452,7 +456,7 @@ export default function Calendar() {
                 Adicionar Evento - {(() => {
                   try {
                     if (!selectedDate) return '';
-                    const date = new Date(selectedDate);
+                    const date = new Date(selectedDate + 'T00:00:00');
                     if (isNaN(date.getTime())) return '';
                     return date.toLocaleDateString('pt-BR');
                   } catch {

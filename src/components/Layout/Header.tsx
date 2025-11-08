@@ -18,7 +18,7 @@ export default function Header() {
   const profileRef = useRef<HTMLDivElement>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notificationCount, setNotificationCount] = useState(0);
-  const [readNotifications, setReadNotifications] = useState<string[]>([]);
+
 
   const handleLogout = () => {
     logout();
@@ -34,10 +34,7 @@ export default function Header() {
       if (response.ok) {
         const data = await response.json();
         setNotifications(data);
-        const savedRead = localStorage.getItem('readNotifications');
-        const parsedRead = savedRead ? JSON.parse(savedRead) : [];
-        setReadNotifications(parsedRead);
-        const unreadCount = data.filter((n: any) => !parsedRead.includes(n.id.toString())).length;
+        const unreadCount = data.filter((n: any) => n.status !== 'READ').length;
         setNotificationCount(unreadCount);
       }
     } catch (error) {
@@ -54,12 +51,18 @@ export default function Header() {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
-      const updatedRead = [...readNotifications, notificationId];
-      setReadNotifications(updatedRead);
-      localStorage.setItem('readNotifications', JSON.stringify(updatedRead));
-      
-      const unreadCount = notifications.filter(n => !updatedRead.includes(n.id.toString())).length;
+
+      // Atualizar o estado local
+      setNotifications(prev =>
+        prev.map(notif =>
+          notif.id === notificationId
+            ? { ...notif, status: 'READ' }
+            : notif
+        )
+      );
+
+      // Recalcular contador
+      const unreadCount = notifications.filter(n => n.id !== notificationId && n.status !== 'READ').length;
       setNotificationCount(unreadCount);
     } catch (error) {
       console.error('Erro ao marcar notificação como lida:', error);
@@ -69,14 +72,14 @@ export default function Header() {
   useEffect(() => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 5000);
-    
+
     // Listen for notification updates from other components
     const handleNotificationUpdate = () => {
       fetchNotifications();
     };
-    
+
     window.addEventListener('notificationsUpdated', handleNotificationUpdate);
-    
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('notificationsUpdated', handleNotificationUpdate);
@@ -118,7 +121,7 @@ export default function Header() {
             >
               <FaUser className={theme.textSecondary} />
             </button>
-            
+
             {showProfileDropdown && (
               <div className={`absolute right-0 mt-2 w-48 ${theme.secondaryBg} border ${theme.border} rounded-xl shadow-xl`}>
                 <div className={`p-3 border-b ${theme.border}`}>
@@ -140,7 +143,7 @@ export default function Header() {
 
           {/* Notifications */}
           <div className="relative" ref={notificationRef}>
-            <button 
+            <button
               onClick={() => setShowNotifications(!showNotifications)}
               className={`w-10 h-10 ${theme.secondaryBg} border ${theme.border} rounded-xl flex items-center justify-center ${theme.hover} transition-all duration-200`}
             >
@@ -151,7 +154,7 @@ export default function Header() {
                 </span>
               )}
             </button>
-            
+
             {showNotifications && (
               <div className={`absolute right-0 mt-2 w-80 ${theme.secondaryBg} border ${theme.border} rounded-xl shadow-xl z-50`}>
                 <div className={`p-4 border-b ${theme.border}`}>
@@ -160,31 +163,30 @@ export default function Header() {
                 <div className="max-h-96 overflow-y-auto">
                   {notifications.length > 0 ? (
                     notifications.slice(0, 5).map((notification) => {
-                      const isRead = notification.seen || readNotifications.includes(notification.id.toString());
+                      const isRead = notification.status === 'READ';
                       return (
-                      <div 
-                        key={notification.id} 
-                        onClick={() => {
-                          markNotificationAsRead(notification.id.toString());
-                          router.push('/notifications');
-                          setShowNotifications(false);
-                        }}
-                        className={`p-4 border-b ${theme.border} last:border-b-0 ${theme.hover} transition-colors cursor-pointer`}
-                      >
-                        <div className="flex items-start space-x-3">
-                          <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                            isRead ? 'bg-gray-400' : 'bg-blue-500'
-                          }`}></div>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium ${theme.text}`}>{notification.title}</p>
-                            <p className={`text-xs ${theme.textSecondary} mt-1`}>{notification.message}</p>
-                            <p className={`text-xs ${theme.textSecondary} mt-1`}>
-                              {new Date(notification.createdAt).toLocaleString('pt-BR')}
-                            </p>
+                        <div
+                          key={notification.id}
+                          onClick={() => {
+                            markNotificationAsRead(notification.id.toString());
+                            router.push('/notifications');
+                            setShowNotifications(false);
+                          }}
+                          className={`p-4 border-b ${theme.border} last:border-b-0 ${theme.hover} transition-colors cursor-pointer`}
+                        >
+                          <div className="flex items-start space-x-3">
+                            <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${isRead ? 'bg-gray-400' : 'bg-blue-500'
+                              }`}></div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium ${theme.text}`}>{notification.title}</p>
+                              <p className={`text-xs ${theme.textSecondary} mt-1`}>{notification.message}</p>
+                              <p className={`text-xs ${theme.textSecondary} mt-1`}>
+                                {new Date(notification.createdAt).toLocaleString('pt-BR')}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
+                      );
                     })
                   ) : (
                     <div className="p-8 text-center">
@@ -194,7 +196,7 @@ export default function Header() {
                   )}
                 </div>
                 <div className={`p-3 border-t ${theme.border} text-center`}>
-                  <button 
+                  <button
                     onClick={() => {
                       router.push('/notifications');
                       setShowNotifications(false);

@@ -39,7 +39,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Atualizar projeto e membros em uma transação
-    const updatedProject = await prisma.$transaction(async (tx: any) => {
+    const updatedProject = await prisma.$transaction(async (tx) => {
       // Atualizar dados básicos do projeto
       const updated = await tx.project.update({
         where: { id: params.id },

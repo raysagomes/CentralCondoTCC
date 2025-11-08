@@ -39,20 +39,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const paymentId = params.id;
 
-    const payment = await prisma.payment.update({
+    // Definir data de pagamento com timezone de Fortaleza
+    const paidDate = new Date().toLocaleString('en-US', { timeZone: 'America/Fortaleza' });
+    
+    const updatedPayment = await prisma.payment.update({
       where: { id: params.id },
       data: {
         paid: true,
-        link: null
+        paidDate: new Date(paidDate)
       }
-    });
-    if (!payment) {
-      return NextResponse.json({ error: 'Pagamento não encontrado' }, { status: 404 });
-    }
-
-    const updatedPayment = await prisma.payment.update({
-      where: { id: paymentId },
-      data: { paid: true }
     });
 
     return NextResponse.json(updatedPayment);

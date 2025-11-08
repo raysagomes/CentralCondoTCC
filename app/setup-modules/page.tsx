@@ -18,7 +18,7 @@ const [selected, setSelected] = useState<string[]>(['avisos']);
 const [saving, setSaving] = useState(false);
 const [error, setError] = useState<string | null>(null);
 
-// 🔹 Pré-carrega módulos salvos para o usuário atual
+// Pré-carrega módulos salvos para o usuário atual
 useEffect(() => {
 try {
 const email = localStorage.getItem('userEmail');
@@ -40,7 +40,7 @@ const saved = localStorage.getItem(key);
 
 }, []);
 
-// 🔹 Marca/desmarca um módulo
+// Marca/desmarca um módulo
 const toggle = (id: string, required?: boolean) => {
 if (required) return; // não desmarca obrigatórios
 setSelected((prev) =>
@@ -48,14 +48,14 @@ prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
 );
 };
 
-// 🔹 Confirma e salva no localStorage + backend
+// Confirma e salva no localStorage + backend
 const handleConfirm = async () => {
 setSaving(true);
 setError(null);
 
 try {
   const modules = Array.from(new Set(['avisos', ...selected]));
-  console.log('💾 Salvando módulos selecionados:', modules);
+  console.log(' Salvando módulos selecionados:', modules);
 
   const email = localStorage.getItem('userEmail');
   const key = email ? `modules_${email}` : 'modules';

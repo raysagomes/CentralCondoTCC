@@ -46,7 +46,7 @@ export class ProjectRepository implements IProjectRepository {
     
     if (user?.accountType === 'ENTERPRISE') {
       // ENTERPRISE tem acesso a todos os projetos da empresa
-      return prisma.project.findMany({
+      const projects = await prisma.project.findMany({
         where: {
           OR: [
             { ownerId: userId },
@@ -65,9 +65,10 @@ export class ProjectRepository implements IProjectRepository {
           }
         }
       });
+      return projects;
     }
     
-    return prisma.project.findMany({
+    const projects = await prisma.project.findMany({
       where: {
         OR: [
           { ownerId: userId },
@@ -86,6 +87,22 @@ export class ProjectRepository implements IProjectRepository {
         }
       }
     });
+    
+    // Verificar tarefas em cada projeto
+    for (const project of projects) {
+      if (project.tasks?.length > 0) {
+        project.tasks.forEach(task => {
+          console.log(`  - Tarefa: ${task.title} (ID: ${task.id}, ProjectId: ${task.projectId})`);
+        });
+      }
+    }
+    
+    // Verificar membros dos projetos
+    const memberships = await prisma.projectMember.findMany({
+      where: { userId },
+      include: { project: true }
+    });    
+    return projects;
   }
 
   async update(id: string, data: any): Promise<any> {

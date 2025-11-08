@@ -1,6 +1,7 @@
 'use client';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import {
   FaProjectDiagram,
   FaCalendarAlt,
@@ -26,7 +27,7 @@ export default function Sidebar() {
   const [hasNewAnnouncement, setHasNewAnnouncement] = useState(false);
   const [enabledModules, setEnabledModules] = useState<string[]>([]);
 
-  // 🔹 Carrega os módulos selecionados do localStorage
+  //  Carrega os módulos selecionados do localStorage
   useEffect(() => {
     try {
       const selected = getSelectedModulesClient();
@@ -36,22 +37,20 @@ export default function Sidebar() {
     }
   }, []);
 
-  // 🔸 Verifica novos avisos
+  //  Verifica novos avisos
   useEffect(() => {
     const checkNewAnnouncements = () => {
       const lastCheck = localStorage.getItem('lastAnnouncementCheck');
       const announcements = localStorage.getItem('announcements');
 
       if (announcements) {
-        try {
-          const parsed = JSON.parse(announcements);
-          if (parsed.length > 0) {
-            const latest = parsed[0];
-            if (!lastCheck || new Date(latest.createdAt) > new Date(lastCheck)) {
-              setHasNewAnnouncement(true);
-            }
+        const parsedAnnouncements = JSON.parse(announcements);
+        if (parsedAnnouncements.length > 0) {
+          const latestAnnouncement = parsedAnnouncements[0];
+          if (!lastCheck || new Date(latestAnnouncement.createdAt) > new Date(lastCheck)) {
+            setHasNewAnnouncement(true);
           }
-        } catch {}
+        }
       }
     };
 
@@ -60,7 +59,7 @@ export default function Sidebar() {
     return () => clearInterval(interval);
   }, []);
 
-  // 🔹 Filtra os módulos de acordo com o que foi selecionado
+  // Filtra os módulos de acordo com o que foi selecionado
   const visibleItems = allMenuItems.filter(
     (item) =>
       item.id === 'dashboard' || // sempre visível
