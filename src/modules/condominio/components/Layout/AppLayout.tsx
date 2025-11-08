@@ -1,5 +1,6 @@
 'use client';
 import { useAuth } from '@/modules/auth';
+import { useNotificationChecker } from '../../../../hooks/useNotificationChecker';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import Footer from './Footer';
@@ -10,6 +11,7 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const { isAuthenticated } = useAuth();
+  useNotificationChecker();
 
   if (!isAuthenticated) {
     return <>{children}</>;

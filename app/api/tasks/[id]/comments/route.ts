@@ -75,10 +75,21 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const { content } = await request.json();
+    const formData = await request.formData();
+    const content = formData.get('content') as string;
+    const attachments: string[] = [];
 
-    if (!content || !content.trim()) {
-      return NextResponse.json({ error: 'Conteúdo do comentário é obrigatório' }, { status: 400 });
+    // Process file uploads
+    for (let i = 0; formData.get(`file${i}`); i++) {
+      const file = formData.get(`file${i}`) as File;
+      if (file) {
+        // For now, we'll store file names. In production, upload to cloud storage
+        attachments.push(file.name);
+      }
+    }
+
+    if ((!content || !content.trim()) && attachments.length === 0) {
+      return NextResponse.json({ error: 'Conteúdo ou anexos são obrigatórios' }, { status: 400 });
     }
 
     // Verificar se a tarefa existe e se o usuário tem acesso ao projeto
@@ -112,9 +123,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     const comment = await prisma.comment.create({
       data: {
-        content: content.trim(),
+        content: content?.trim() || '',
         taskId: params.id,
-        authorId: decoded.userId
+        authorId: decoded.userId,
+        attachments: attachments
       },
       include: { 
         author: { 

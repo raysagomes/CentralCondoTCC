@@ -5,12 +5,13 @@ import { useState, useEffect } from 'react';
 interface Payment {
   id: string;
   title: string;
+  amount: number;
   dueDate: string;
+  barcode?: string;
   link?: string;
   paid: boolean;
-  projectId: string;
-  type?: 'condominium' | 'service' | 'maintenance' | 'security' | 'fine' | 'other';
   paidDate?: string;
+  type?: 'condominium' | 'service' | 'maintenance' | 'security' | 'fine' | 'other';
 }
 
 export const usePayments = () => {

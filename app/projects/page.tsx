@@ -18,7 +18,7 @@ export default function Projects() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [newProject, setNewProject] = useState({ name: '', description: '' });
-  const [newTask, setNewTask] = useState({ title: '', description: '', assignedToId: '' });
+  const [newTask, setNewTask] = useState({ title: '', description: '', assignedToId: '', deadline: '' });
   const [editingTask, setEditingTask] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
@@ -26,6 +26,7 @@ export default function Projects() {
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [members, setMembers] = useState([]);
   const [projectMembers, setProjectMembers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -83,21 +84,28 @@ export default function Projects() {
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !selectedTaskForComments) return;
+    if ((!newComment.trim() && selectedFiles.length === 0) || !selectedTaskForComments) return;
 
     try {
       const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('content', newComment.trim());
+      
+      selectedFiles.forEach((file, index) => {
+        formData.append(`file${index}`, file);
+      });
+
       const response = await fetch(`/api/tasks/${selectedTaskForComments.id}/comments`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ content: newComment.trim() })
+        body: formData
       });
       
       if (response.ok) {
         setNewComment('');
+        setSelectedFiles([]);
         fetchComments(selectedTaskForComments.id);
       }
     } catch (error) {
@@ -145,10 +153,16 @@ export default function Projects() {
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedProject) {
-      const result = await createTask(selectedProject.id, newTask.title, newTask.description, newTask.assignedToId || undefined);
+      const taskData = {
+        title: newTask.title,
+        description: newTask.description,
+        assignedToId: newTask.assignedToId || undefined,
+        deadline: newTask.deadline ? new Date(newTask.deadline).toISOString() : undefined
+      };
+      const result = await createTask(selectedProject.id, taskData.title, taskData.description, taskData.assignedToId, taskData.deadline);
       if (result.success) {
         setShowTaskModal(false);
-        setNewTask({ title: '', description: '', assignedToId: '' });
+        setNewTask({ title: '', description: '', assignedToId: '', deadline: '' });
         const updatedProject = projects.find(p => p.id === selectedProject.id);
         if (updatedProject) {
           setSelectedProject({...updatedProject});
@@ -159,7 +173,7 @@ export default function Projects() {
 
   const handleQuickCreateTask = async () => {
     if (selectedProject) {
-      const taskNumber = selectedProject.tasks.length + 1;
+      const taskNumber = (selectedProject.tasks?.length || 0) + 1;
       const result = await createTask(
         selectedProject.id, 
         `Nova Tarefa ${taskNumber}`, 
@@ -187,7 +201,8 @@ export default function Projects() {
     setEditingTask({ 
       ...task, 
       description: task.description || '',
-      assignedToId: task.assignedTo?.id || '' 
+      assignedToId: task.assignedTo?.id || '',
+      deadline: task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : ''
     });
     // Garantir que os membros do projeto estejam carregados
     if (selectedProject) {
@@ -203,7 +218,8 @@ export default function Projects() {
         title: editingTask.title,
         description: editingTask.description || '',
         assignedToId: editingTask.assignedToId || null,
-        status: editingTask.status
+        status: editingTask.status,
+        deadline: editingTask.deadline ? new Date(editingTask.deadline).toISOString() : null
       });
       if (result.success) {
         setShowEditModal(false);
@@ -263,7 +279,7 @@ export default function Projects() {
   };
 
   const calculateProgress = (tasks: any[]) => {
-    if (tasks.length === 0) return 0;
+    if (!tasks || tasks.length === 0) return 0;
     const completed = tasks.filter(task => task.status === 'COMPLETED').length;
     return Math.round((completed / tasks.length) * 100);
   };
@@ -290,7 +306,7 @@ export default function Projects() {
                 <div>
                   <h2 className={`text-2xl font-bold ${theme.text}`}>{selectedProject.name}</h2>
                   <p className={`${theme.textSecondary}`}>{selectedProject.description}</p>
-                  {selectedProject.tasks.length > itemsPerPage && (
+                  {selectedProject.tasks?.length > itemsPerPage && (
                     <span className={`text-xs ${theme.textSecondary} mt-1 block`}>
                       Página {currentPage} de {Math.ceil(selectedProject.tasks.length / itemsPerPage)}
                     </span>
@@ -324,7 +340,7 @@ export default function Projects() {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {selectedProject.tasks
+                {(selectedProject.tasks || [])
                   .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                   .map((task: any) => (
                   <div key={task.id} className={`${theme.secondaryBg} border ${theme.border} rounded-lg p-4 hover:border-blue-500/50 transition-all duration-200 cursor-pointer`}
@@ -333,7 +349,8 @@ export default function Projects() {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
                         {task.status === 'PENDING' ? 'Pendente' : task.status === 'IN_PROGRESS' ? 'Em Progresso' : 'Concluída'}
                       </span>
-                      {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
+                      {((['ENTERPRISE', 'ADM'].includes(user?.accountType || '')) || 
+                        (selectedProject?.members?.some((m: any) => m.userId === user?.id))) && (
                         <div className="flex space-x-1">
                           <button
                             onClick={(e) => { e.stopPropagation(); handleEditTask(task); }}
@@ -341,12 +358,14 @@ export default function Projects() {
                           >
                             <FaEdit />
                           </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
-                            className="text-red-400 hover:text-red-300 text-xs p-1 rounded hover:bg-red-500/20 transition-all duration-200"
-                          >
-                            <FaTrash />
-                          </button>
+                          {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
+                              className="text-red-400 hover:text-red-300 text-xs p-1 rounded hover:bg-red-500/20 transition-all duration-200"
+                            >
+                              <FaTrash />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -354,13 +373,14 @@ export default function Projects() {
                     <div className={`text-xs ${theme.textSecondary} space-y-1`}>
                       <div className="flex items-center"><FaUser className="mr-1" /> {task.assignedTo?.name || 'Não atribuído'}</div>
                       <div className="flex items-center"><FaCalendarAlt className="mr-1" /> {new Date(task.createdAt).toLocaleDateString('pt-BR')}</div>
+                      {task.deadline && <div className="flex items-center text-orange-400"><FaCalendarAlt className="mr-1" /> Prazo: {new Date(task.deadline).toLocaleDateString('pt-BR')}</div>}
                       <div className="flex items-center"><FaUserTie className="mr-1" /> {task.createdBy?.name}</div>
                     </div>
                   </div>
                 ))}
               </div>
               
-              {selectedProject.tasks.length > itemsPerPage && (
+              {(selectedProject.tasks?.length || 0) > itemsPerPage && (
                 <div className="flex justify-center items-center space-x-4 mt-6">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
@@ -375,10 +395,10 @@ export default function Projects() {
                   </button>
                   
                   <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(selectedProject.tasks.length / itemsPerPage)))}
-                    disabled={currentPage === Math.ceil(selectedProject.tasks.length / itemsPerPage)}
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil((selectedProject.tasks?.length || 0) / itemsPerPage)))}
+                    disabled={currentPage === Math.ceil((selectedProject.tasks?.length || 0) / itemsPerPage)}
                     className={`px-4 py-2 rounded-lg transition-colors ${
-                      currentPage === Math.ceil(selectedProject.tasks.length / itemsPerPage)
+                      currentPage === Math.ceil((selectedProject.tasks?.length || 0) / itemsPerPage)
                         ? `${theme.textSecondary} cursor-not-allowed`
                         : `${theme.text} ${theme.secondaryBg} border ${theme.border} hover:${theme.hover}`
                     }`}
@@ -409,7 +429,7 @@ export default function Projects() {
                   </div>
                 </div>
                 <div className={`text-sm ${theme.textSecondary}`}>
-                  {project.tasks.length} tarefas
+                  {project.tasks?.length || 0} tarefas
                 </div>
               </div>
             ))}
@@ -512,6 +532,15 @@ export default function Projects() {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Prazo</label>
+                  <input
+                    type="date"
+                    value={newTask.deadline}
+                    onChange={(e) => setNewTask({...newTask, deadline: e.target.value})}
+                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
+                  />
+                </div>
                 <div className="flex justify-end space-x-2">
                   <button
                     type="button"
@@ -573,6 +602,15 @@ export default function Projects() {
                   </select>
                 </div>
                 <div>
+                  <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Prazo</label>
+                  <input
+                    type="date"
+                    value={editingTask.deadline || ''}
+                    onChange={(e) => setEditingTask({...editingTask, deadline: e.target.value})}
+                    className={`w-full px-3 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
+                  />
+                </div>
+                <div>
                   <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Status</label>
                   <select
                     value={editingTask.status || 'PENDING'}
@@ -629,15 +667,24 @@ export default function Projects() {
                   </button>
                 </div>
                 {selectedTaskForComments.description && (
-                  <div className={`${theme.secondaryBg} p-3 rounded-lg`}>
+                  <div className={`${theme.secondaryBg} p-3 rounded-lg mb-2`}>
                     <h4 className={`font-medium ${theme.text} mb-2`}>Descrição:</h4>
                     <p className={`${theme.textSecondary} text-sm`}>{selectedTaskForComments.description}</p>
                   </div>
                 )}
+                {selectedTaskForComments.deadline && (
+                  <div className={`${theme.secondaryBg} p-3 rounded-lg`}>
+                    <h4 className={`font-medium ${theme.text} mb-2`}>Prazo:</h4>
+                    <p className={`${theme.textSecondary} text-sm text-orange-400`}>
+                      {new Date(selectedTaskForComments.deadline).toLocaleDateString('pt-BR')} às {new Date(selectedTaskForComments.deadline).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                )}
               </div>
               
-              {/* Seção de Status (apenas para ENTERPRISE e ADM) */}
-              {['ENTERPRISE', 'ADM'].includes(user?.accountType || '') && (
+              {/* Seção de Status (para membros do projeto) */}
+              {((['ENTERPRISE', 'ADM'].includes(user?.accountType || '')) || 
+                (selectedProject?.members?.some((m: any) => m.userId === user?.id))) && (
                 <div className={`px-6 py-4 border-b ${theme.border}`}>
                   <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>Alterar Status:</label>
                   <select
@@ -689,6 +736,21 @@ export default function Projects() {
                               </span>
                             </div>
                             <p className={`${theme.text} text-sm leading-relaxed`}>{comment.content}</p>
+                            {comment.attachments && comment.attachments.length > 0 && (
+                              <div className="mt-2 space-y-1">
+                                {comment.attachments.map((attachment: string, index: number) => (
+                                  <a
+                                    key={index}
+                                    href={attachment}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-block text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded mr-2 hover:bg-blue-500/30 transition-colors"
+                                  >
+                                    📎 Anexo {index + 1}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -699,28 +761,67 @@ export default function Projects() {
               
               {/* Formulário de Comentário */}
               <div className={`p-6 border-t ${theme.border}`}>
-                <form onSubmit={handleAddComment} className="flex space-x-3">
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-blue-400 font-semibold text-sm">
-                      {user?.name?.charAt(0).toUpperCase()}
-                    </span>
+                <form onSubmit={handleAddComment} className="space-y-3">
+                  <div className="flex space-x-3">
+                    <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-blue-400 font-semibold text-sm">
+                        {user?.name?.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Adicionar um comentário..."
+                        className={`w-full px-4 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
+                      />
+                    </div>
                   </div>
-                  <div className="flex-1 flex space-x-2">
+                  
+                  {/* Anexos */}
+                  <div className="flex items-center space-x-3 ml-11">
                     <input
-                      type="text"
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Adicionar um comentário..."
-                      className={`flex-1 px-4 py-2 ${theme.secondaryBg} border ${theme.border} rounded-lg focus:outline-none focus:border-blue-500 ${theme.text}`}
+                      type="file"
+                      multiple
+                      onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
+                      className="hidden"
+                      id="file-upload"
+                      accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif"
                     />
+                    <label
+                      htmlFor="file-upload"
+                      className={`cursor-pointer text-sm ${theme.textSecondary} hover:${theme.text} transition-colors`}
+                    >
+                      📎 Anexar arquivos
+                    </label>
+                    
                     <button
                       type="submit"
-                      disabled={!newComment.trim()}
+                      disabled={!newComment.trim() && selectedFiles.length === 0}
                       className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Enviar
                     </button>
                   </div>
+                  
+                  {/* Lista de arquivos selecionados */}
+                  {selectedFiles.length > 0 && (
+                    <div className="ml-11 space-y-1">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className={`flex items-center justify-between text-xs ${theme.textSecondary} bg-gray-500/10 px-2 py-1 rounded`}>
+                          <span>📎 {file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedFiles(files => files.filter((_, i) => i !== index))}
+                            className="text-red-400 hover:text-red-300 ml-2"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </form>
               </div>
             </div>

@@ -14,36 +14,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
+    // Buscar eventos dos projetos que o usuário tem acesso
+    const userProjects = await prisma.project.findMany({
+      where: {
+        OR: [
+          { ownerId: decoded.userId },
+          { members: { some: { userId: decoded.userId } } }
+        ]
+      },
+      select: { id: true }
     });
 
-    if (!user) {
-      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
-    }
-
-    let whereClause = {};
-    if (user.accountType === 'COMPANY') {
-      // COMPANY vê eventos de todos os projetos que possui
-      whereClause = {
-        OR: [
-          { project: { ownerId: decoded.userId } },
-          { projectId: null } // Eventos gerais
-        ]
-      };
-    } else {
-      // USER vê eventos dos projetos em que participa
-      whereClause = {
-        OR: [
-          { project: { members: { some: { userId: decoded.userId } } } },
-          { projectId: null } // Eventos gerais
-        ]
-      };
-    }
+    const projectIds = userProjects.map(p => p.id);
 
     const events = await prisma.event.findMany({
-      where: whereClause,
-      include: { project: { select: { name: true } } },
+      where: {
+        OR: [
+          { projectId: { in: projectIds } },
+          { projectId: null } // Eventos globais
+        ]
+      },
       orderBy: { date: 'asc' }
     });
 
@@ -68,19 +58,13 @@ export async function POST(request: NextRequest) {
 
     const { title, description, date, time, projectId } = await request.json();
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
-    });
-
-    if (!user || user.accountType !== 'COMPANY') {
-      return NextResponse.json({ error: 'Apenas COMPANY pode criar eventos' }, { status: 403 });
-    }
-
+    // Criar data com timezone de Fortaleza
+    const eventDate = new Date(date + 'T' + (time || '00:00') + ':00-03:00');
     const event = await prisma.event.create({
       data: {
         title,
         description,
-        date: new Date(date),
+        date: eventDate,
         time,
         projectId: projectId || null
       }

@@ -17,22 +17,45 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const updates = await request.json();
     const taskId = await params.id;
 
-    // Buscar tarefa atual para verificar mudança de status
+    // Buscar tarefa atual para verificar mudança de status e permissões
     const currentTask = await prisma.task.findUnique({
       where: { id: taskId },
-      include: { assignedTo: true, project: true }
+      include: { 
+        assignedTo: true, 
+        project: {
+          include: {
+            members: true
+          }
+        }
+      }
     });
 
     if (!currentTask) {
       return NextResponse.json({ error: 'Tarefa não encontrada' }, { status: 404 });
     }
 
+    // Verificar permissões
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    const canEdit = ['ENTERPRISE', 'ADM'].includes(user?.accountType || '') || 
+                   currentTask.project.members.some(m => m.userId === decoded.userId);
+
+    if (!canEdit) {
+      return NextResponse.json({ error: 'Sem permissão para editar esta tarefa' }, { status: 403 });
+    }
+
+    const updateData: any = { ...updates };
+    if (updates.status === 'COMPLETED') {
+      updateData.finishedAt = new Date();
+    } else if (updates.status && updates.status !== 'COMPLETED') {
+      updateData.finishedAt = null;
+    }
+    if (updates.deadline) {
+      updateData.deadline = new Date(updates.deadline);
+    }
+
     const updatedTask = await prisma.task.update({
       where: { id: taskId },
-      data: {
-        ...updates,
-        finishedAt: updates.status === 'COMPLETED' ? new Date() : null
-      },
+      data: updateData,
       include: { assignedTo: true, project: true }
     });
 

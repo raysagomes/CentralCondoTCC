@@ -7,7 +7,7 @@ export class TaskService {
     private projectService: ProjectService
   ) {}
 
-  async createTask(title: string, description: string, projectId: string, assignedToId: string, createdById: string) {
+  async createTask(title: string, description: string, projectId: string, assignedToId: string, createdById: string, deadline?: string) {
     if (!title || !projectId) {
       throw new Error('Título e projeto são obrigatórios');
     }
@@ -19,7 +19,8 @@ export class TaskService {
       description,
       projectId,
       assignedToId,
-      createdById
+      createdById,
+      deadline: deadline ? new Date(deadline) : undefined
     });
   }
 
@@ -37,6 +38,7 @@ export class TaskService {
       updateData.finishedAt = updates.status === 'COMPLETED' ? new Date() : null;
     }
     if (updates.assignedToId !== undefined) updateData.assignedToId = updates.assignedToId;
+    if (updates.deadline !== undefined) updateData.deadline = updates.deadline ? new Date(updates.deadline) : null;
 
     return this.taskRepository.update(taskId, updateData);
   }
