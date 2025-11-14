@@ -5,6 +5,7 @@ interface User {
   name: string;
   email: string;
   accountType: string;
+  modules?: string[];   
   phone?: string;
   bio?: string;
   company?: string;
@@ -24,10 +25,11 @@ export const useAuth = () => {
     loading: true
   });
 
+  //Carrega token + user no carregamento
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
-    
+
     if (token && userData) {
       setAuthState({
         user: JSON.parse(userData),
@@ -39,6 +41,7 @@ export const useAuth = () => {
     }
   }, []);
 
+  //LOGIN
   const login = async (email: string, password: string) => {
     try {
       const response = await fetch('/api/auth/login', {
@@ -53,10 +56,13 @@ export const useAuth = () => {
         throw new Error(data.error || 'Erro no login');
       }
 
+      //Salva token
       localStorage.setItem('token', data.token);
+
+      //salva os dados do usuário, incluindo modules
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      // Salva o e-mail para identificar os módulos do usuário
+      //salva email para consultas
       localStorage.setItem('userEmail', data.user.email);
 
       setAuthState({
@@ -67,10 +73,14 @@ export const useAuth = () => {
 
       return { success: true };
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      };
     }
   };
 
+  //REGISTRO
   const register = async (name: string, email: string, password: string, securityWord: string) => {
     try {
       const response = await fetch('/api/auth/register', {
@@ -88,7 +98,6 @@ export const useAuth = () => {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      // salva o e-mail após registro
       localStorage.setItem('userEmail', data.user.email);
 
       setAuthState({
@@ -99,14 +108,18 @@ export const useAuth = () => {
 
       return { success: true };
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      };
     }
   };
 
+  //LOGOUT
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('userEmail'); // remove o email salvo ao deslogar
+    localStorage.removeItem('userEmail');
     setAuthState({
       user: null,
       token: null,

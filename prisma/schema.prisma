@@ -16,9 +16,11 @@ model User {
   name          String
   email         String         @unique
   password      String
-  securityWord  String?        // 🔹 Tornado opcional (flexibilidade para criação via painel)
+  securityWord  String?        
   accountType   AccountType    @default(USER)
   createdAt     DateTime       @default(now())
+
+  modules       String?        
 
   // 🔗 Relacionamentos
   projects       ProjectMember[]
