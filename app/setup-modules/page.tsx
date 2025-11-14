@@ -19,6 +19,7 @@ export default function SetupModulesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  //carrega modulos salvos para o usuario atual
   useEffect(() => {
     try {
       const email = localStorage.getItem('userEmail');
@@ -39,13 +40,15 @@ export default function SetupModulesPage() {
     }
   }, []);
 
+  //Marca/desmarca um modulo
   const toggle = (id: string, required?: boolean) => {
-    if (required) return;
+    if (required) return; //nao desmarca obrigatorios
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
 
+  // Confirma e salva no localStorage/backend
   const handleConfirm = async () => {
     setSaving(true);
     setError(null);
