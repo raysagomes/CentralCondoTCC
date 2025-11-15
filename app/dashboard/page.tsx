@@ -233,7 +233,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push('/auth');
+      router.replace('/auth');
     } else if (isAuthenticated) {
       fetchEvents();
       loadAnnouncements();

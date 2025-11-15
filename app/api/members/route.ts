@@ -94,6 +94,22 @@ export async function POST(request: NextRequest) {
     // Determinar o enterpriseId correto
     const enterpriseId = creator.accountType === 'ENTERPRISE' ? creator.id : creator.enterpriseId;
 
+    if (!enterpriseId) {
+      return NextResponse.json({ error: 'Enterprise ID não encontrado' }, { status: 400 });
+    }
+
+    // Buscar os módulos da empresa
+    const enterprise = await prisma.user.findUnique({
+      where: { id: enterpriseId },
+      select: { modules: true }
+    });
+
+    // Garantir que tenha pelo menos os módulos obrigatórios
+    const enterpriseModules = enterprise?.modules || JSON.stringify(['avisos', 'calendario', 'equipe']);
+    const modules = JSON.parse(enterpriseModules);
+    const requiredModules = ['avisos', 'calendario', 'equipe'];
+    const finalModules = [...new Set([...modules, ...requiredModules])];
+
     const member = await prisma.user.create({
       data: {
         name,
@@ -101,7 +117,8 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         securityWord: hashedSecurityWord,
         accountType,
-        enterpriseId
+        enterpriseId,
+        modules: JSON.stringify(finalModules)
       },
       select: {
         id: true,

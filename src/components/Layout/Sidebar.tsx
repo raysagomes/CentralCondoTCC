@@ -27,14 +27,10 @@ export default function Sidebar() {
   const [hasNewAnnouncement, setHasNewAnnouncement] = useState(false);
   const [enabledModules, setEnabledModules] = useState<string[]>([]);
 
-  //  Carrega os módulos selecionados do localStorage
+  //  Carrega os módulos do cookie
   useEffect(() => {
-    try {
-      const selected = getSelectedModulesClient();
-      if (Array.isArray(selected)) setEnabledModules(selected);
-    } catch (error) {
-      console.error('Erro ao carregar módulos do localStorage:', error);
-    }
+    const selected = getSelectedModulesClient();
+    setEnabledModules(selected);
   }, []);
 
   //  Verifica novos avisos

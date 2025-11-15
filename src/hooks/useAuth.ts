@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getUserFromCookie } from '../lib/auth';
 
 interface User {
   id: string;
@@ -23,17 +24,35 @@ export const useAuth = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
     
-    if (token && userData) {
-      setAuthState({
-        user: JSON.parse(userData),
-        token,
-        loading: false
-      });
-    } else {
-      setAuthState(prev => ({ ...prev, loading: false }));
+    if (token) {
+      // Tentar ler do cookie primeiro
+      const userFromCookie = getUserFromCookie();
+      if (userFromCookie) {
+        setAuthState({
+          user: userFromCookie,
+          token,
+          loading: false
+        });
+        return;
+      }
+      
+      // Fallback para localStorage se cookie não existir
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          setAuthState({
+            user,
+            token,
+            loading: false
+          });
+          return;
+        } catch {}
+      }
     }
+    
+    setAuthState(prev => ({ ...prev, loading: false }));
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -97,6 +116,7 @@ export const useAuth = () => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    document.cookie = 'user_data=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     setAuthState({
       user: null,
       token: null,

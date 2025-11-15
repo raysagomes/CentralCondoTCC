@@ -7,15 +7,15 @@ type ModuleOption = { id: string; label: string; required?: boolean };
 
 const MODULES: ModuleOption[] = [
   { id: 'avisos', label: 'Avisos (obrigatório)', required: true },
+  { id: 'calendario', label: 'Calendário (obrigatório)', required: true },
+  { id: 'equipe', label: 'Membros (obrigatório)', required: true },
   { id: 'projetos', label: 'Projetos' },
-  { id: 'calendario', label: 'Calendário' },
-  { id: 'equipe', label: 'Membros' },
   { id: 'pagamento', label: 'Pagamentos' },
 ];
 
 export default function SetupModulesPage() {
   const router = useRouter();
-  const [selected, setSelected] = useState<string[]>(['avisos']);
+  const [selected, setSelected] = useState<string[]>(['avisos', 'calendario', 'equipe']);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,9 +29,10 @@ export default function SetupModulesPage() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const ensureAvisos = parsed.includes('avisos')
+          const ensureRequired = ['avisos', 'calendario', 'equipe'];
+          const ensureAvisos = ensureRequired.every(req => parsed.includes(req))
             ? parsed
-            : [...parsed, 'avisos'];
+            : [...new Set([...parsed, ...ensureRequired])];
           setSelected(ensureAvisos);
         }
       }
@@ -54,7 +55,7 @@ export default function SetupModulesPage() {
     setError(null);
 
     try {
-      const modules = Array.from(new Set(['avisos', ...selected]));
+      const modules = Array.from(new Set(['avisos', 'calendario', 'equipe', ...selected]));
       console.log('Salvando módulos selecionados:', modules);
 
       const email = localStorage.getItem('userEmail');

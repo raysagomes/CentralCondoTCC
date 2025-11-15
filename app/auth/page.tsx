@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/modules/auth';
+import { useAuth } from '../../src/hooks/useAuth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FaPuzzlePiece, FaEye, FaEyeSlash } from 'react-icons/fa';
 
@@ -33,7 +33,9 @@ export default function Auth() {
       if (isLogin) {
         const result = await login(formData.email, formData.password);
         if (result.success) {
-          router.push('/dashboard');
+          setTimeout(() => {
+            router.replace('/dashboard');
+          }, 100);
         } else {
           setError(result.error || 'Erro no login');
         }
