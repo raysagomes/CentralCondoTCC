@@ -6,8 +6,6 @@ export async function POST(request: NextRequest) {
   try {
     const { name, email, password, securityWord } = await request.json();
     
-    console.log('Dados recebidos:', { name, email, password: password ? '***' : undefined, securityWord: securityWord ? '***' : undefined });
-
     //  Validação básica
     if (!name) {
       return NextResponse.json(
