@@ -60,6 +60,7 @@ export default function Sidebar() {
     (item) =>
       item.id === 'dashboard' || // sempre visível
       item.id === 'avisos' || // obrigatório
+      item.id === 'profile' || // sempre visível
       enabledModules.includes(item.id)
   );
 

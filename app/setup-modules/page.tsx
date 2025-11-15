@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import PaymentModal from '../../src/components/PaymentModal';
 
 type ModuleOption = { id: string; label: string; required?: boolean };
 
@@ -18,6 +19,8 @@ export default function SetupModulesPage() {
   const [selected, setSelected] = useState<string[]>(['avisos', 'calendario', 'equipe']);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingModule, setPendingModule] = useState<string | null>(null);
 
   //carrega modulos salvos para o usuario atual
   useEffect(() => {
@@ -44,9 +47,27 @@ export default function SetupModulesPage() {
   //Marca/desmarca um modulo
   const toggle = (id: string, required?: boolean) => {
     if (required) return; //nao desmarca obrigatorios
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+    
+    const isOptional = ['projetos', 'pagamento'].includes(id);
+    const isCurrentlySelected = selected.includes(id);
+    
+    if (isOptional && !isCurrentlySelected) {
+      // Módulo opcional sendo selecionado - mostrar modal de pagamento
+      setPendingModule(id);
+      setShowPaymentModal(true);
+    } else {
+      // Módulo sendo desmarcado ou não é opcional
+      setSelected((prev) =>
+        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      );
+    }
+  };
+  
+  const handlePaymentConfirm = () => {
+    if (pendingModule) {
+      setSelected(prev => [...prev, pendingModule]);
+      setPendingModule(null);
+    }
   };
 
   // Confirma e salva no localStorage/backend
@@ -120,6 +141,17 @@ export default function SetupModulesPage() {
           {saving ? 'Salvando...' : 'Continuar para o painel'}
         </button>
       </div>
+      
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => {
+          setShowPaymentModal(false);
+          setPendingModule(null);
+        }}
+        onConfirm={handlePaymentConfirm}
+        selectedModules={pendingModule ? [pendingModule] : []}
+        userModules={selected}
+      />
     </div>
   );
 }

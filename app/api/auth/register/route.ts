@@ -5,11 +5,31 @@ import { hashPassword, generateToken } from '../../../../src/lib/auth';
 export async function POST(request: NextRequest) {
   try {
     const { name, email, password, securityWord } = await request.json();
+    
+    console.log('Dados recebidos:', { name, email, password: password ? '***' : undefined, securityWord: securityWord ? '***' : undefined });
 
     //  Validação básica
-    if (!name || !email || !password || !securityWord) {
+    if (!name) {
       return NextResponse.json(
-        { error: 'Nome, email, senha e palavra de segurança são obrigatórios' },
+        { error: 'Nome é obrigatório' },
+        { status: 400 }
+      );
+    }
+    if (!email) {
+      return NextResponse.json(
+        { error: 'Email é obrigatório' },
+        { status: 400 }
+      );
+    }
+    if (!password) {
+      return NextResponse.json(
+        { error: 'Senha é obrigatória' },
+        { status: 400 }
+      );
+    }
+    if (!securityWord) {
+      return NextResponse.json(
+        { error: 'Palavra de segurança é obrigatória' },
         { status: 400 }
       );
     }

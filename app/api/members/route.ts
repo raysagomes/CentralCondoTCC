@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
-      return NextResponse.json({ error: 'Email já está em uso' }, { status: 409 });
+      return NextResponse.json({ error: `O email ${email} já está sendo usado por outro usuário` }, { status: 409 });
     }
 
     const temporaryPassword = 'temp123';

@@ -1,10 +1,14 @@
 'use client';
-import { useAuth } from '@/modules/auth';
+import { useAuth } from '../../src/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import AppLayout from '@/modules/condominio/components/Layout/AppLayout';
-import { useTheme, useStats } from '@/modules/condominio';
-import { getThemeClasses } from '@/shared';
+import AppLayout from '../../src/components/Layout/AppLayout';
+import { useTheme } from '../../src/contexts/ThemeContext';
+import { getThemeClasses } from '../../src/utils/themeClasses';
+import { useStats } from '../../src/hooks/useStats';
+import { getSelectedModulesClient } from '../../src/lib/modules';
+import PaymentModal from '../../src/components/PaymentModal';
+import { FaPlus } from 'react-icons/fa';
 
 export default function Profile() {
   const { isAuthenticated, loading, user } = useAuth();
@@ -24,8 +28,21 @@ export default function Profile() {
     newPassword: '',
     confirmPassword: ''
   });
+  const [userModules, setUserModules] = useState<string[]>([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedNewModules, setSelectedNewModules] = useState<string[]>([]);
+  const [showSecurityWordModal, setShowSecurityWordModal] = useState(false);
+  const [securityWordData, setSecurityWordData] = useState({
+    currentSecurityWord: '',
+    newSecurityWord: ''
+  });
 
   const { stats, loading: statsLoading, refetch } = useStats();
+  
+  const availableModules = [
+    { id: 'projetos', name: 'Projetos', price: 30 },
+    { id: 'pagamento', name: 'Pagamentos', price: 30 }
+  ];
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -42,6 +59,11 @@ export default function Profile() {
       });
     }
   }, [user]);
+  
+  useEffect(() => {
+    const modules = getSelectedModulesClient();
+    setUserModules(modules);
+  }, []);
 
   const handleSave = async () => {
     try {
@@ -96,6 +118,75 @@ export default function Profile() {
       console.error('Erro ao alterar senha:', error);
     }
   };
+  
+  const handleSubscribeModule = (moduleId: string) => {
+    setSelectedNewModules([moduleId]);
+    setShowPaymentModal(true);
+  };
+  
+  const handleSecurityWordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/profile/security-word', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          currentSecurityWord: securityWordData.currentSecurityWord,
+          newSecurityWord: securityWordData.newSecurityWord
+        })
+      });
+
+      if (response.ok) {
+        setShowSecurityWordModal(false);
+        setSecurityWordData({ currentSecurityWord: '', newSecurityWord: '' });
+        alert('Palavra de segurança alterada com sucesso!');
+      } else {
+        alert('Erro ao alterar palavra de segurança');
+      }
+    } catch (error) {
+      console.error('Erro ao alterar palavra de segurança:', error);
+    }
+  };
+
+  const handlePaymentConfirm = async (finalModules?: string[]) => {
+    try {
+      const token = localStorage.getItem('token');
+      const modulesToAdd = finalModules || selectedNewModules;
+      const uniqueModules = [...new Set([...userModules, ...modulesToAdd])];
+      
+      const response = await fetch('/api/user/modules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ modules: uniqueModules })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setUserModules(uniqueModules);
+        const email = localStorage.getItem('userEmail');
+        const key = email ? `modules_${email}` : 'modules';
+        localStorage.setItem(key, JSON.stringify(uniqueModules));
+        alert('Módulo assinado, por favor saia e volte novamente para carregar os módulos novos');
+      } else {
+        alert('Erro ao assinar módulo');
+      }
+    } catch (error) {
+      console.error('Erro ao assinar módulo:', error);
+      alert('Erro ao assinar módulo');
+    }
+    setSelectedNewModules([]);
+  };
+  
+  const unsubscribedModules = availableModules.filter(module => 
+    !userModules.includes(module.id)
+  );
 
 
 
@@ -242,11 +333,42 @@ export default function Profile() {
                 >
                   Alterar Senha
                 </button>
-                <button className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                  Desativar Conta
+                <button
+                  onClick={() => setShowSecurityWordModal(true)}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Alterar Palavra de Segurança
                 </button>
               </div>
             </div>
+
+            {/* Assinatura de Módulos Extras - Apenas para ENTERPRISE */}
+            {user?.accountType === 'ENTERPRISE' && unsubscribedModules.length > 0 && (
+              <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6`}>
+                <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Assinatura de Módulos Extras</h3>
+                <div className="space-y-3">
+                  {unsubscribedModules.map(module => (
+                    <div key={module.id} className={`flex justify-between items-center p-3 ${theme.secondaryBg} rounded-lg`}>
+                      <div>
+                        <span className={`${theme.text} font-medium`}>{module.name}</span>
+                        <p className={`text-sm ${theme.textSecondary}`}>R$ {module.price},00/mês</p>
+                      </div>
+                      <button
+                        onClick={() => handleSubscribeModule(module.id)}
+                        className="flex items-center px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                      >
+                        <FaPlus className="mr-1" />
+                        Assinar
+                      </button>
+                    </div>
+                  ))}
+                  <div className="text-xs text-gray-500 mt-2">
+                    • Cada módulo extra: R$ 30,00/mês<br/>
+                    • Assinando ambos: R$ 50,00/mês (desconto automático)
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Preferências */}
             <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6`}>
@@ -342,7 +464,64 @@ export default function Profile() {
             </div>
           </div>
         )}
+        
+        {/* Modal Alterar Palavra de Segurança */}
+        {showSecurityWordModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className={`${theme.cardBg} border ${theme.border} rounded-xl p-6 w-96`}>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Alterar Palavra de Segurança</h3>
+              <form onSubmit={handleSecurityWordChange} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Palavra de Segurança Atual</label>
+                  <input
+                    type="text"
+                    value={securityWordData.currentSecurityWord}
+                    onChange={(e) => setSecurityWordData({...securityWordData, currentSecurityWord: e.target.value})}
+                    className="w-full px-3 py-2 bg-[#0f1136] border border-[#2a2d6f] rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Nova Palavra de Segurança</label>
+                  <input
+                    type="text"
+                    value={securityWordData.newSecurityWord}
+                    onChange={(e) => setSecurityWordData({...securityWordData, newSecurityWord: e.target.value})}
+                    className="w-full px-3 py-2 bg-[#0f1136] border border-[#2a2d6f] rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSecurityWordModal(false)}
+                    className="px-4 py-2 text-gray-400 hover:text-gray-200 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Alterar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
+        {/* Modal de Pagamento */}
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setSelectedNewModules([]);
+          }}
+          onConfirm={handlePaymentConfirm}
+          selectedModules={selectedNewModules}
+          userModules={userModules}
+        />
 
         </div>
       </AppLayout>

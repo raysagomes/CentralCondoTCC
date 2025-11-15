@@ -47,11 +47,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Buscar o usuário atual
+    const currentUser = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { accountType: true, id: true }
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
+    }
+
+    // Atualizar o usuário atual
     const updated = await prisma.user.update({
       where: { id: decoded.userId },
       data: { modules: JSON.stringify(modules) },
       select: { modules: true },
     });
+
+    // Se for ENTERPRISE, atualizar todos os usuários USER relacionados
+    if (currentUser.accountType === 'ENTERPRISE') {
+      await prisma.user.updateMany({
+        where: {
+          enterpriseId: decoded.userId,
+          accountType: 'USER'
+        },
+        data: { modules: JSON.stringify(modules) }
+      });
+    }
 
     return NextResponse.json({
       success: true,
