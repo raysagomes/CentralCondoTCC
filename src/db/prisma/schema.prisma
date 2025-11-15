@@ -18,7 +18,8 @@ model User {
   password     String
   securityWord String    
   accountType  AccountType @default(ENTERPRISE) // ENTERPRISE, ADM ou USER
-  enterpriseId String?   // ID da empresa para usuários ADM e USER
+  enterpriseId String?   
+  modules      String?   
   createdAt    DateTime  @default(now())
   
   // Relacionamentos

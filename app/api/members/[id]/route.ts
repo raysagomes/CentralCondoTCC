@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken, hashPassword } from '../../../../src/lib/auth';
+import { verifyToken, hashPassword, comparePassword } from '../../../../src/lib/auth';
 import { prisma } from '../../../../src/lib/prisma';
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
@@ -14,16 +14,37 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
 
-    const { name, email, accountType, resetPassword, securityWord, newPassword } = await request.json();
+    const { name, email, accountType, resetPassword, securityWord } = await request.json();
 
     let updateData: any = { name, email, accountType };
     
     if (resetPassword) {
-      if (securityWord !== 'admin123') {
-        return NextResponse.json({ error: 'Palavra de segurança inválida' }, { status: 403 });
+      // Verificar se o usuário que está fazendo o reset é ENTERPRISE
+      const requestingUser = await prisma.user.findUnique({
+        where: { id: decoded.userId }
+      });
+      
+      if (!requestingUser || requestingUser.accountType !== 'ENTERPRISE') {
+        return NextResponse.json({ error: 'Apenas usuários Enterprise podem resetar senhas' }, { status: 403 });
       }
       
-      const hashedPassword = await hashPassword(newPassword);
+      // Buscar o usuário cujo senha será resetada
+      const targetUser = await prisma.user.findUnique({
+        where: { id: params.id }
+      });
+      
+      if (!targetUser) {
+        return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
+      }
+      
+      // Verificar a security word do usuário cujo senha será resetada
+      const isSecurityWordValid = await comparePassword(securityWord, targetUser.securityWord);
+      if (!isSecurityWordValid) {
+        return NextResponse.json({ error: 'Palavra de segurança incorreta' }, { status: 403 });
+      }
+      
+      // Resetar para temp123
+      const hashedPassword = await hashPassword('temp123');
       updateData.password = hashedPassword;
     }
 

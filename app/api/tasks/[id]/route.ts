@@ -20,8 +20,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     // Buscar tarefa atual para verificar mudança de status e permissões
     const currentTask = await prisma.task.findUnique({
       where: { id: taskId },
-      include: { 
-        assignedTo: true, 
+      include: {
+        assignedTo: true,
         project: {
           include: {
             members: true
@@ -36,8 +36,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // Verificar permissões
     const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-    const canEdit = ['ENTERPRISE', 'ADM'].includes(user?.accountType || '') || 
-                   currentTask.project.members.some(m => m.userId === decoded.userId);
+    const canEdit = ['ENTERPRISE', 'ADM'].includes(user?.accountType || '') ||
+      currentTask.project.members.some(m => m.userId === decoded.userId);
 
     if (!canEdit) {
       return NextResponse.json({ error: 'Sem permissão para editar esta tarefa' }, { status: 403 });
@@ -71,7 +71,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
       // Criar notificações para todos os administradores
       await Promise.all(
-        admins.map((admin: any) => 
+        admins.map((admin: any) =>
           prisma.notification.create({
             data: {
               title: 'Tarefa Concluída',

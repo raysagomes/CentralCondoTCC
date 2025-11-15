@@ -3,7 +3,6 @@ import { verifyToken } from '../../../src/lib/auth';
 import { prisma } from '../../../src/lib/prisma';
 
 export async function POST(request: NextRequest) {
-  console.log('=== INICIANDO CRIAÇÃO DE TAREFA ===');
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     console.log('Token recebido:', token ? 'Presente' : 'Ausente');
@@ -22,10 +21,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { title, description, projectId, assignedToId, deadline } = await request.json();
-
-    console.log('Dados recebidos:', { title, description, projectId, assignedToId, deadline });
-    console.log('ProjectId recebido:', projectId);
-    console.log('Tipo do projectId:', typeof projectId);
 
     // Verificar se o projeto existe
     const project = await prisma.project.findUnique({ where: { id: projectId } });
@@ -47,8 +42,6 @@ export async function POST(request: NextRequest) {
 
     // Validar se assignedToId é válido
     const finalAssignedToId = assignedToId && assignedToId !== '' ? assignedToId : null;
-    console.log('AssignedToId final:', finalAssignedToId);
-
     console.log('Criando tarefa no banco...');
     const task = await prisma.task.create({
       data: {
@@ -66,12 +59,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    console.log('Tarefa criada com sucesso:', task.id);
-    console.log('ProjectId da tarefa criada:', task.projectId);
-    console.log('Projeto vinculado:', task.project?.name);
-    console.log('=== TAREFA CRIADA COM SUCESSO ===');
     return NextResponse.json(task, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('=== ERRO AO CRIAR TAREFA ===');
     console.error('Tipo do erro:', error.constructor.name);
     console.error('Mensagem:', error.message);

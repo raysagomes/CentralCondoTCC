@@ -17,8 +17,35 @@ export const comparePassword = async (password: string, hashedPassword: string):
   }
 };
 
-export const generateToken = (userId: string): string => {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '1h' });
+export const generateToken = (userId: string, modules?: string[]): string => {
+  return jwt.sign({ userId, modules }, JWT_SECRET, { expiresIn: '1h' });
+};
+
+export const generateUserCookie = (user: any, modules: string[]): string => {
+  const userData = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    accountType: user.accountType,
+    enterpriseId: user.enterpriseId,
+    modules
+  };
+  return Buffer.from(JSON.stringify(userData)).toString('base64');
+};
+
+export const getUserFromCookie = (): any | null => {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const cookie = document.cookie.split('; ').find(c => c.startsWith('user_data='));
+    if (!cookie) return null;
+    
+    const value = cookie.split('=')[1];
+    const userData = JSON.parse(atob(value));
+    return userData;
+  } catch {
+    return null;
+  }
 };
 
 export const verifyToken = (token: string): { userId: string } | null => {

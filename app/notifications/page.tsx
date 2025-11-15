@@ -116,7 +116,7 @@ export default function Notifications() {
     setSettings(newSettings);
     localStorage.setItem('notificationSettings', JSON.stringify(newSettings));
     
-    // Salvar no banco de dados (implementar se necessário)
+    // Salvar no banco de dados 
     try {
       const token = localStorage.getItem('token');
       await fetch('/api/notifications/settings', {

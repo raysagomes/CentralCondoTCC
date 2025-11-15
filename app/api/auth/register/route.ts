@@ -5,26 +5,61 @@ import { hashPassword, generateToken } from '../../../../src/lib/auth';
 export async function POST(request: NextRequest) {
   try {
     const { name, email, password, securityWord } = await request.json();
-
-    if (!name || !email || !password || !securityWord) {
-      return NextResponse.json({ error: 'Nome, email, senha e palavra de segurança são obrigatórios' }, { status: 400 });
+    
+    //  Validação básica
+    if (!name) {
+      return NextResponse.json(
+        { error: 'Nome é obrigatório' },
+        { status: 400 }
+      );
+    }
+    if (!email) {
+      return NextResponse.json(
+        { error: 'Email é obrigatório' },
+        { status: 400 }
+      );
+    }
+    if (!password) {
+      return NextResponse.json(
+        { error: 'Senha é obrigatória' },
+        { status: 400 }
+      );
+    }
+    if (!securityWord) {
+      return NextResponse.json(
+        { error: 'Palavra de segurança é obrigatória' },
+        { status: 400 }
+      );
     }
 
     if (password.length < 6) {
-      return NextResponse.json({ error: 'Senha deve ter pelo menos 6 caracteres' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Senha deve ter pelo menos 6 caracteres' },
+        { status: 400 }
+      );
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
-    });
+    if (securityWord.trim().length < 3) {
+      return NextResponse.json(
+        { error: 'A palavra de segurança deve ter pelo menos 3 caracteres' },
+        { status: 400 }
+      );
+    }
 
+    //  Verifica se já existe usuário com o mesmo e-mail
+    const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return NextResponse.json({ error: 'Email já está em uso' }, { status: 409 });
+      return NextResponse.json(
+        { error: 'Email já está em uso' },
+        { status: 409 }
+      );
     }
 
+    //  Criptografa senha e palavra de segurança
     const hashedPassword = await hashPassword(password);
     const hashedSecurityWord = await hashPassword(securityWord);
 
+    //  Cria o usuário
     const user = await prisma.user.create({
       data: {
         name,

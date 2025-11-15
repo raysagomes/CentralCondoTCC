@@ -3,10 +3,8 @@ import { prisma } from '../../../src/lib/prisma';
 import { verifyToken } from '../../../src/lib/auth';
 
 export async function GET(request: NextRequest) {
-  console.log('=== API NOTIFICATIONS GET ===');
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    console.log('Token presente:', !!token);
     
     if (!token) {
       console.log('Erro: Token não fornecido');
@@ -14,7 +12,6 @@ export async function GET(request: NextRequest) {
     }
 
     const decoded = verifyToken(token);
-    console.log('Token válido:', !!decoded);
     
     if (!decoded) {
       console.log('Erro: Token inválido');

@@ -79,12 +79,14 @@ export default function Members() {
   };
 
   const handleResetPassword = async (member: any) => {
-    // amazonq-ignore-next-line
-    const securityWord = prompt('Digite a palavra de segurança:');
-    if (!securityWord) return;
+    if (user?.accountType !== 'ENTERPRISE') {
+      alert('Apenas usuários Enterprise podem resetar senhas');
+      return;
+    }
     
-    const newPassword = prompt('Digite a nova senha:');
-    if (!newPassword) return;
+    // amazonq-ignore-next-line
+    const securityWord = prompt(`Digite a palavra de segurança de ${member.name}:`);
+    if (!securityWord) return;
     
     try {
       const token = localStorage.getItem('token');
@@ -99,21 +101,20 @@ export default function Members() {
           email: member.email,
           accountType: member.accountType,
           resetPassword: true,
-          securityWord,
-          newPassword
+          securityWord
         })
       });
       
       if (response.ok) {
-        alert('Senha redefinida com sucesso!');
+        alert('Senha resetada para temp123 com sucesso!');
         fetchMembers();
       } else {
         const error = await response.json();
-        alert(error.error || 'Erro ao redefinir senha');
+        alert(error.error || 'Erro ao resetar senha');
       }
     } catch (error) {
-      console.error('Erro ao redefinir senha:', error);
-      alert('Erro ao redefinir senha');
+      console.error('Erro ao resetar senha:', error);
+      alert('Erro ao resetar senha');
     }
   };
 
@@ -257,26 +258,34 @@ export default function Members() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => handleEdit(member)}
-                          className="text-blue-400 hover:text-blue-300 px-2 py-1 rounded hover:bg-blue-500/20 transition-all duration-200"
-                        >
-                          Editar
-                        </button>
-                        <button 
-                          onClick={() => handleResetPassword(member)}
-                          className="text-yellow-400 hover:text-yellow-300 px-2 py-1 rounded hover:bg-yellow-500/20 transition-all duration-200"
-                        >
-                          Reset Senha
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(member.id)}
-                          className="text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-500/20 transition-all duration-200"
-                        >
-                          Remover
-                        </button>
-                      </div>
+                      {member.accountType === 'ENTERPRISE' ? (
+                        <span className={`text-sm ${theme.textSecondary}`}></span>
+                      ) : ['ENTERPRISE', 'ADM'].includes(user?.accountType || '') ? (
+                        <div className="flex space-x-2">
+                          <button 
+                            onClick={() => handleEdit(member)}
+                            className="text-blue-400 hover:text-blue-300 px-2 py-1 rounded hover:bg-blue-500/20 transition-all duration-200"
+                          >
+                            Editar
+                          </button>
+                          {user?.accountType === 'ENTERPRISE' && (
+                            <button 
+                              onClick={() => handleResetPassword(member)}
+                              className="text-yellow-400 hover:text-yellow-300 px-2 py-1 rounded hover:bg-yellow-500/20 transition-all duration-200"
+                            >
+                              Reset Senha
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => handleDelete(member.id)}
+                            className="text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-500/20 transition-all duration-200"
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      ) : (
+                        <span className={`text-sm ${theme.textSecondary}`}>Sem permissão</span>
+                      )}
                     </td>
                   </tr>
                 )) : (

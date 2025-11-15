@@ -40,7 +40,7 @@ export class ProjectService {
     }
     
     // Buscar dados do usuário para verificar se é ENTERPRISE
-    const { prisma } = require('../../../lib/prisma');
+    const { prisma } = require('@/shared');
     const user = await prisma.user.findUnique({ where: { id: userId } });
     
     const isOwner = project.ownerId === userId;

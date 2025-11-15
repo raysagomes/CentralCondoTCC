@@ -1,4 +1,4 @@
-import { prisma } from '../../../lib/prisma';
+import { prisma } from '@/shared';
 
 export interface ITaskRepository {
   create(data: any): Promise<any>;

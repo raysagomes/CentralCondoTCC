@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '../../../src/lib/auth';
-import { PrismaClient } from '@prisma/client';
+import { EventService, EventRepository } from '@/modules/financeiro';
+import { TaskService, TaskRepository, ProjectService, ProjectRepository } from '@/modules/projetos';
+import { prisma } from '@/shared';
 
-const prisma = new PrismaClient();
+const eventRepository = new EventRepository();
+const taskRepository = new TaskRepository();
+const projectRepository = new ProjectRepository();
+const projectService = new ProjectService(projectRepository);
+const eventService = new EventService(eventRepository, projectService);
+const taskService = new TaskService(taskRepository, projectService);
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,6 +24,8 @@ export async function GET(request: NextRequest) {
     }
 
     const [recentEvents, pendingTasks, notifications] = await Promise.all([
+      eventService.getRecentEventsByOwner(decoded.userId),
+      taskService.getPendingTasksByOwner(decoded.userId),
       prisma.event.findMany({
         where: { ownerId: decoded.userId },
         orderBy: { date: 'asc' },

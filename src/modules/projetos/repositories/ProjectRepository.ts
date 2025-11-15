@@ -42,12 +42,9 @@ export class ProjectRepository implements IProjectRepository {
   }
 
   async findByUserAccess(userId: string): Promise<any[]> {
-    console.log('=== BUSCANDO PROJETOS PARA USER:', userId, '===');
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    console.log('Tipo de usuário:', user?.accountType);
     
     if (user?.accountType === 'ENTERPRISE') {
-      console.log('Buscando projetos como ENTERPRISE');
       // ENTERPRISE tem acesso a todos os projetos da empresa
       const projects = await prisma.project.findMany({
         where: {
@@ -68,11 +65,9 @@ export class ProjectRepository implements IProjectRepository {
           }
         }
       });
-      console.log('Projetos encontrados (ENTERPRISE):', projects.length);
       return projects;
     }
     
-    console.log('Buscando projetos como USER/ADM');
     const projects = await prisma.project.findMany({
       where: {
         OR: [
@@ -92,11 +87,9 @@ export class ProjectRepository implements IProjectRepository {
         }
       }
     });
-    console.log('Projetos encontrados (USER/ADM):', projects.length);
     
     // Verificar tarefas em cada projeto
     for (const project of projects) {
-      console.log(`Projeto ${project.name}: ${project.tasks?.length || 0} tarefas`);
       if (project.tasks?.length > 0) {
         project.tasks.forEach(task => {
           console.log(`  - Tarefa: ${task.title} (ID: ${task.id}, ProjectId: ${task.projectId})`);
@@ -108,9 +101,7 @@ export class ProjectRepository implements IProjectRepository {
     const memberships = await prisma.projectMember.findMany({
       where: { userId },
       include: { project: true }
-    });
-    console.log('Memberships encontradas:', memberships.length);
-    
+    });    
     return projects;
   }
 

@@ -1,13 +1,13 @@
 'use client';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import AppLayout from '../../src/components/Layout/AppLayout';
 import { useDashboard } from '../../src/hooks/useDashboard';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { getThemeClasses } from '../../src/utils/themeClasses';
 import { useStats } from '../../src/hooks/useStats';
-import { useState } from 'react';
+import { getSelectedModulesClient } from '@/lib/modules';
 import { HiSpeakerphone } from 'react-icons/hi';
 import { IoNotifications } from 'react-icons/io5';
 
@@ -17,16 +17,16 @@ export default function Dashboard() {
   const theme = getThemeClasses(isDark);
   const router = useRouter();
   const { pendingTasks, loading: dashboardLoading } = useDashboard();
+  const [readAnnouncements, setReadAnnouncements] = useState<string[]>([]);
+  const [hasNewAnnouncement, setHasNewAnnouncement] = useState(false);
+  const [activeModules, setActiveModules] = useState<string[]>([]);
   const [dashboardNotifications, setDashboardNotifications] = useState<any[]>([]);
   const { stats } = useStats();
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
-
   const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [hasNewAnnouncement, setHasNewAnnouncement] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [lastAnnouncementCount, setLastAnnouncementCount] = useState(0);
-  const [readAnnouncements, setReadAnnouncements] = useState<string[]>([]);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [newNotification, setNewNotification] = useState({ title: '', message: '', type: 'GENERAL', recipients: 'all' });
   const [members, setMembers] = useState<any[]>([]);
@@ -35,6 +35,20 @@ export default function Dashboard() {
   const [showNotificationToast, setShowNotificationToast] = useState(false);
   const [lastNotificationCount, setLastNotificationCount] = useState(0);
   const [readNotifications, setReadNotifications] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const modules = getSelectedModulesClient();
+    setActiveModules(modules);
+  }, []);
+
+  const handleResetModules = () => {
+    const email = localStorage.getItem('userEmail');
+    const key = email ? `modules_${email}` : 'modules';
+    localStorage.removeItem(key);
+    router.replace('/setup-modules');
+  };
+
+
 
   const loadAnnouncements = async () => {
     try {
@@ -219,7 +233,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push('/auth');
+      router.replace('/auth');
     } else if (isAuthenticated) {
       fetchEvents();
       loadAnnouncements();
